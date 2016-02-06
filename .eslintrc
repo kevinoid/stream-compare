@@ -6,6 +6,10 @@ extends: "airbnb/legacy"
 
 env:
   node: true
+  # Disable unused env from airbnb/legacy
+  # Note:  Won't fully work until ESLint v2 is released due to
+  # https://github.com/eslint/eslint/issues/3915
+  browser: false
 
 # enable ECMAScript features
 ecmaFeatures:

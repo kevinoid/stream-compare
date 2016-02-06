@@ -209,47 +209,64 @@ function streamCompareInternal(stream1, stream2, options, callback) {
     stream2.on('error', endListener2);
   }
 
-  function addData(state, data) { // eslint-disable-line complexity
+  /** Adds data to a stream state.
+   *
+   * This function should be a method of StreamState, but that would violate
+   * our guarantees.  We call it as if it were to convey this behavior and to
+   * avoid ESLint no-param-reassign.
+   *
+   * @this {!StreamState}
+   * @param {*} data Data read from the stream for this StreamState.
+   */
+  function addData(data) {
     if (options.objectMode) {
-      if (!state.data) {
-        state.data = [data];
+      if (!this.data) {
+        this.data = [data];
       } else {
-        state.data.push(data);
+        this.data.push(data);
       }
-      ++state.totalDataLen;
+      ++this.totalDataLen;
     } else if (typeof data !== 'string' && !(data instanceof Buffer)) {
-      done(new TypeError('expected string or Buffer, got ' +
-            Object.prototype.toString.call(data) + '.  Need objectMode?'));
-      return;
-    } else if (state.data === null || state.data === undefined) {
-      state.data = data;
-      state.totalDataLen += data.length;
-    } else if (typeof state.data === 'string' && typeof data === 'string') {
+      throw new TypeError('expected string or Buffer, got ' +
+          Object.prototype.toString.call(data) + '.  Need objectMode?');
+    } else if (this.data === null || this.data === undefined) {
+      this.data = data;
+      this.totalDataLen += data.length;
+    } else if (typeof this.data === 'string' && typeof data === 'string') {
       // perf:  Avoid unnecessary string concatenation
-      if (state.data.length === 0) {
-        state.data = data;
+      if (this.data.length === 0) {
+        this.data = data;
       } else if (data.length > 0) {
-        state.data += data;
+        this.data += data;
       }
-      state.totalDataLen += data.length;
-    } else if (state.data instanceof Buffer && data instanceof Buffer) {
+      this.totalDataLen += data.length;
+    } else if (this.data instanceof Buffer && data instanceof Buffer) {
       // perf:  Avoid unnecessary Buffer concatenation
-      if (state.data.length === 0) {
-        state.data = data;
+      if (this.data.length === 0) {
+        this.data = data;
       } else if (data.length > 0) {
-        // FIXME:  Potential performance issue if data or state.data are large.
+        // FIXME:  Potential performance issue if data or this.data are large.
         // Should append to a Buffer we control and store a slice in .data
-        state.data = Buffer.concat(
-            [state.data, data],
-            state.data.length + data.length
+        this.data = Buffer.concat(
+            [this.data, data],
+            this.data.length + data.length
         );
       }
-      state.totalDataLen += data.length;
+      this.totalDataLen += data.length;
     } else {
-      done(new TypeError('read returned ' +
-            Object.prototype.toString.call(data) + ', previously ' +
-            Object.prototype.toString.call(state.data) +
-            '.  Need objectMode?'));
+      throw new TypeError('read returned ' +
+          Object.prototype.toString.call(data) + ', previously ' +
+          Object.prototype.toString.call(this.data) +
+          '.  Need objectMode?');
+    }
+  }
+
+  /** Handles data read from the stream for a given state. */
+  function handleData(state, data) {
+    try {
+      addData.call(state, data);
+    } catch (err) {
+      done(err);
       return;
     }
 
@@ -282,7 +299,7 @@ function streamCompareInternal(stream1, stream2, options, callback) {
         return;
       }
 
-      addData(state, data);
+      handleData(state, data);
     }
   }
 
@@ -307,8 +324,8 @@ function streamCompareInternal(stream1, stream2, options, callback) {
   switch (options.readPolicy) {
   case 'flowing':
     debug('Will read from streams in flowing mode.');
-    stream1.on('data', addData.bind(null, state1));
-    stream2.on('data', addData.bind(null, state2));
+    stream1.on('data', handleData.bind(null, state1));
+    stream2.on('data', handleData.bind(null, state2));
     break;
 
   case 'least':

@@ -1,11 +1,6 @@
 extends: "../.eslintrc"
 
-# Test-related globals for mocha
-globals:
-  after      : false
-  afterEach  : false
-  before     : false
-  beforeEach : false
-  describe   : false
-  it         : false
-  run        : false
+env:
+    mocha: true
+
+# vi: set sts=2 sw=2 et ft=yaml:

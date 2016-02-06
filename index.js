@@ -322,22 +322,22 @@ function streamCompareInternal(stream1, stream2, options, callback) {
   }
 
   switch (options.readPolicy) {
-  case 'flowing':
-    debug('Will read from streams in flowing mode.');
-    stream1.on('data', handleData.bind(null, state1));
-    stream2.on('data', handleData.bind(null, state2));
-    break;
+    case 'flowing':
+      debug('Will read from streams in flowing mode.');
+      stream1.on('data', handleData.bind(null, state1));
+      stream2.on('data', handleData.bind(null, state2));
+      break;
 
-  case 'least':
-    debug('Will read from stream with least output.');
-    stream1.once('end', readNextOnEnd);
-    stream2.once('end', readNextOnEnd);
-    readNext();
-    break;
+    case 'least':
+      debug('Will read from stream with least output.');
+      stream1.once('end', readNextOnEnd);
+      stream2.once('end', readNextOnEnd);
+      readNext();
+      break;
 
-  default:
-    debug('Not reading from streams.');
-    break;
+    default:
+      debug('Not reading from streams.');
+      break;
   }
 }
 

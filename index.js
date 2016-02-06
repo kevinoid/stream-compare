@@ -32,6 +32,18 @@ var DEFAULT_OPTIONS = {
 };
 
 /** Caller-visible stream state for comparison.
+ *
+ * Guarantees/Invariants:
+ *  - Equivalent states are assert.deepStrictEqual.
+ *  - States can be round-tripped to JSON at any point.
+ *  - States are owned by the caller, so any additional properties (which are
+ *    permitted to violate the above guarantees) are preserved and the same
+ *    state object is always returned.
+ *
+ * As a result, objects of this class have no methods and do not contain any
+ * non-state information (e.g. the stream itself or the comparison options)
+ * and their prototype is never used.
+ *
  * @constructor
  */
 function StreamState() {

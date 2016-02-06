@@ -383,23 +383,18 @@ function streamCompareInternal(stream1, stream2, options, callback) {
  *
  * @param {!stream.Readable} stream1 First stream to compare.
  * @param {!stream.Readable} stream2 Second stream to compare.
- * @param {Object|function(!StreamState,!StreamState)=} options Options, or a
- * comparison function (as described in options.compare).
+ * @param {Object|function(!StreamState,!StreamState)=} optionsOrCompare
+ * Options, or a comparison function (as described in options.compare).
  * @param {?function(Error, Object=)=} callback Callback with comparison result
  * or error.
  */
-function streamCompare(stream1, stream2, options, callback) {
-  if (typeof options === 'function') {
-    options = {
-      compare: options
-    };
-  }
-
-  options = assign(
+function streamCompare(stream1, stream2, optionsOrCompare, callback) {
+  var options = assign(
       // Default Promise to global Promise at time of call, if defined
       {Promise: typeof Promise === 'function' && Promise},
       DEFAULT_OPTIONS,
-      options
+      typeof optionsOrCompare === 'function' ? {compare: optionsOrCompare} :
+          optionsOrCompare
   );
   if (!options.compare) {
     options.compare = options.incremental;

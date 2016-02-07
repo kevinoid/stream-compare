@@ -29,7 +29,8 @@
     "preversion": "npm run test",
     "test": "npm run lint && npm run test-ci",
     "test-ci": "mocha --recursive test/",
-    "test-cov": "istanbul cover _mocha test/"
+    "test-cov": "istanbul cover _mocha test/",
+    "version": "set -a && . \"${XDG_CONFIG_HOME:-$HOME/.config}/github_changelog_generator\" && github_changelog_generator"
   },
   "dependencies": {
     "debug": "^2.2.0",

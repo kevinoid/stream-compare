@@ -7,4 +7,4 @@ node_js:
   - 0.10
 sudo: false
 
-after_script: "npm run test-cov && cat ./coverage/lcov.info | codecov && cat ./coverage/lcov.info | coveralls"
+after_script: "npm run test-cov && { codecov < ./coverage/lcov.info ; coveralls < ./coverage/lcov.info ; }"

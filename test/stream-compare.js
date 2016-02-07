@@ -16,6 +16,27 @@ var streamCompare = require('..');
 
 var deepEqual = assert.deepStrictEqual || assert.deepEqual;
 
+/** Removes all listeners for a named event and returns a function which
+ * will restore them.
+ *
+ * @param {!EventEmitter} emitter Event emitter for which to save listeners.
+ * @param {string} eventName Name of the event for which to save listeners.
+ * @return {function()} Function which will restore the saved listeners.
+ * @private
+ */
+function saveListeners(emitter, eventName) {
+  var savedListeners = emitter.listeners(eventName);
+  emitter.removeAllListeners(eventName);
+  return function restoreListeners() {
+    if (savedListeners) {
+      savedListeners.forEach(function(listener) {
+        emitter.on(eventName, listener);
+      });
+      savedListeners = null;
+    }
+  };
+}
+
 describe('streamCompare', function() {
   it('propagates the value returned by compare', function(done) {
     var compareValue = false;
@@ -188,85 +209,88 @@ describe('streamCompare', function() {
     stream2.end(' world');
   });
 
-  it('throws on invalid arguments', function() {
+  describe('argument checking', function() {
+    // Since these are by streamCompare, reuse them
     var stream1 = new stream.PassThrough();
     var stream2 = new stream.PassThrough();
-    function callback(err) {}
 
-    should.throws(function() {
-      streamCompare(true, stream2, deepEqual, true);
-    }, /\bstream1\b/);
+    it('throws for invalid callback', function() {
+      should.throws(function() {
+        streamCompare(stream1, stream2, deepEqual, true);
+      }, /\bcallback\b/);
+    });
 
-    should.throws(function() {
-      streamCompare(stream1, true, deepEqual, true);
-    }, /\bstream2\b/);
+    it('for invalid stream1', function(done) {
+      streamCompare(true, stream2, deepEqual, function(err) {
+        should(err).be.an.instanceof(TypeError)
+          .and.match({message: /\bstream1\b/});
+        done();
+      });
+    });
 
-    // Missing .read() method for readPolicy === 'least'
-    should.throws(function() {
-      streamCompare(stream1, new EventEmitter(), deepEqual, true);
-    }, /'least'/);
+    it('for invalid stream2', function(done) {
+      streamCompare(stream1, true, deepEqual, function(err) {
+        should(err).be.an.instanceof(TypeError)
+          .and.match({message: /\bstream2\b/});
+        done();
+      });
+    });
 
-    should.throws(function() {
-      streamCompare(stream1, stream2, deepEqual, true);
-    }, /\bcallback\b/);
+    it('for no .read() method and readPolicy \'least\'', function(done) {
+      streamCompare(stream1, new EventEmitter(), deepEqual, function(err) {
+        should(err).be.an.instanceof(TypeError)
+          .and.match({message: /\bread\b/})
+          .and.match({message: /\bleast\b/});
+        done();
+      });
+    });
 
-    should.throws(function() {
-      streamCompare(stream1, stream2, null, callback);
-    }, /\boptions\.compare\b/);
+    it('for missing optionsOrCompare', function(done) {
+      streamCompare(stream1, stream2, null, function(err) {
+        should(err).be.an.instanceof(TypeError)
+          .and.match({message: /\boptions\.compare\b/});
+        done();
+      });
+    });
 
-    should.throws(function() {
-      streamCompare(stream1, stream2, true, callback);
-    }, /\boptions\.compare\b/);
+    it('for invalid optionsOrCompare', function(done) {
+      streamCompare(stream1, stream2, true, function(err) {
+        should(err).be.an.instanceof(TypeError)
+          .and.match({message: /\boptions\.compare\b/});
+        done();
+      });
+    });
 
-    should.throws(function() {
-      var options = {
-        compare: deepEqual,
-        events: 'invalid'
-      };
-      streamCompare(stream1, stream2, options, callback);
-    }, /\boptions\.events\b/);
-
-    should.throws(function() {
-      var options = {
-        compare: deepEqual,
-        incremental: true
-      };
-      streamCompare(stream1, stream2, options, callback);
-    }, /\boptions\.incremental\b/);
-
-    should.throws(function() {
+    it('for invalid options.readPolicy', function(done) {
       var options = {
         compare: deepEqual,
         readPolicy: true
       };
-      streamCompare(stream1, stream2, options, callback);
-    }, /\boptions\.readPolicy\b/);
+      streamCompare(stream1, stream2, options, function(err) {
+        should(err).match({message: /\boptions\.readPolicy\b/});
+        done();
+      });
+    });
+
+    ['events', 'incremental'].forEach(function(optionName) {
+      it('for invalid options.' + optionName, function(done) {
+        var options = {
+          compare: deepEqual
+        };
+        options[optionName] = true;  // None accepts true as valid
+        streamCompare(stream1, stream2, options, function(err) {
+          should(err).be.an.instanceof(TypeError)
+            .and.match({
+              message: new RegExp('\\boptions\\.' + optionName + '\\b')
+            });
+          done();
+        });
+      });
+    });
   });
 
   describe('Promise', function() {
-    if (typeof Promise !== 'undefined') {
-      it('returns a Promise by default', function() {
-        var stream1 = new stream.PassThrough();
-        var stream2 = new stream.PassThrough();
-        function cb() {}
-
-        var result = streamCompare(stream1, stream2, deepEqual, cb);
-        should(result).be.an.instanceof(Promise);
-      });
-    }
-
-    it('can be set to null to avoid returning one', function() {
-      var stream1 = new stream.PassThrough();
-      var stream2 = new stream.PassThrough();
-      var options = {
-        Promise: null,
-        compare: deepEqual
-      };
-      var result = streamCompare(stream1, stream2, options, function() {});
-      should.not.exist(result);
-    });
-
-    it('throws an Error if no callback or Promise is passed', function() {
+    it('throws an Error if no callback or Promise is available', function() {
       var stream1 = new stream.PassThrough();
       var stream2 = new stream.PassThrough();
       var options = {
@@ -276,63 +300,109 @@ describe('streamCompare', function() {
 
       should.throws(function() {
         streamCompare(stream1, stream2, options);
-      });
+      }, /\bcallback\b|\boptions.Promise\b/);
     });
 
-    it('returns a Promise of the requested type', function() {
+    it('throws if Promise type is invalid', function() {
+      var stream1 = new stream.PassThrough();
+      var stream2 = new stream.PassThrough();
+      var options = {
+        Promise: true,
+        compare: deepEqual
+      };
+
+      should.throws(function() {
+        streamCompare(stream1, stream2, options);
+      }, /\boptions\.Promise\b/);
+    });
+
+    it('returns a Promise of the requested type', function(done) {
       var stream1 = new stream.PassThrough();
       var stream2 = new stream.PassThrough();
       var options = {
         Promise: BBPromise,
         compare: deepEqual
       };
-      function cb() {}
 
-      var result = streamCompare(stream1, stream2, options, cb);
+      var result = streamCompare(stream1, stream2, options);
       should(result).be.an.instanceof(BBPromise);
-    });
-
-    it('returns a Promise which resolves when done', function(done) {
-      var stream1 = new stream.PassThrough();
-      var stream2 = new stream.PassThrough();
-      var options = {
-        Promise: PPromise,
-        compare: deepEqual
-      };
-      streamCompare(stream1, stream2, options).then(done, done);
+      result.then(done, done);
       stream1.end();
       stream2.end();
     });
 
-    it('resolves the Promise and calls the callback', function(done) {
-      var cbCount = 0;
-      function cb() {
-        ++cbCount;
-        if (cbCount > 1) {
-          done();
-        }
-      }
-
+    it('returns an instance of global Promise by default', function(done) {
       var stream1 = new stream.PassThrough();
       var stream2 = new stream.PassThrough();
-      var options = {
-        Promise: PPromise,
-        compare: deepEqual
-      };
-      streamCompare(stream1, stream2, options, cb).then(cb, cb);
-      stream1.end();
-      stream2.end();
-    });
 
-    it('rejects the Promise and calls the callback on error', function(done) {
-      var firstErr;
-      function cb(err) {
-        if (!firstErr) {
-          firstErr = err;
+      var hadPromise = global.hasOwnProperty('Promise');
+      var prevPromise = global.Promise;
+      global.Promise = BBPromise;
+
+      var result;
+      try {
+        result = streamCompare(stream1, stream2, deepEqual);
+        should(result).be.an.instanceof(BBPromise);
+      } finally {
+        if (hadPromise) {
+          global.Promise = prevPromise;
         } else {
-          should.strictEqual(firstErr, err);
-          done();
+          delete global.Promise;
         }
+      }
+
+      result.then(done, done);
+      stream1.end();
+      stream2.end();
+    });
+
+    // Value checking is to prevent callback from contaminating the Promise
+    it('resolves Promise and calls callback with same value', function(done) {
+      // Note:  Order of callbacks is unspecified
+      var firstResult;
+      function checkResult(result) {
+        if (firstResult) {
+          should.strictEqual(result, firstResult);
+          done();
+        } else {
+          firstResult = result;
+        }
+      }
+      function callback(err, result) {
+        should.ifError(err);
+        checkResult(result);
+      }
+
+      var stream1 = new stream.PassThrough();
+      var stream2 = new stream.PassThrough();
+      function compare(state1, state2) {
+        deepEqual(state1, state2);
+        return {};
+      }
+      var options = {
+        Promise: PPromise,
+        compare: compare
+      };
+      streamCompare(stream1, stream2, options, callback)
+        .then(checkResult, done);
+      stream1.end();
+      stream2.end();
+    });
+
+    // Error checking is to prevent callback from contaminating the Promise
+    it('rejects Promise and calls callback with same Error', function(done) {
+      // Note:  Order of callbacks is unspecified
+      var firstError;
+      function checkError(err) {
+        if (firstError) {
+          should.strictEqual(err, firstError);
+          done();
+        } else {
+          firstError = err;
+        }
+      }
+      function fail() {
+        done(new Error('Expected promise to be rejected'));
       }
 
       var stream1 = new stream.PassThrough();
@@ -341,9 +411,104 @@ describe('streamCompare', function() {
         Promise: PPromise,
         compare: deepEqual
       };
-      streamCompare(stream1, stream2, options, cb).catch(cb);
+      streamCompare(stream1, stream2, options, checkError)
+        .then(fail, checkError);
       stream1.end('hello');
       stream2.end();
+    });
+
+    // Prevent callback errors from contaminating the Promise, causing
+    // unhandledRejection, or going completely ignored.
+    it('callback errors cause uncaughtException', function(done) {
+      var stream1 = new stream.PassThrough();
+      var stream2 = new stream.PassThrough();
+      var options = {
+        Promise: PPromise,
+        compare: deepEqual
+      };
+      var callbackError = new Error('callback error');
+      function callback() { throw callbackError; }
+
+      var restoreUncaught = saveListeners(process, 'uncaughtException');
+      var restoreUnhandled = saveListeners(process, 'unhandledRejection');
+      function cleanup() {
+        process.removeListener('uncaughtException', onUncaughtException);
+        process.removeListener('unhandledRejection', onUnhandledRejection);
+        restoreUncaught();
+        restoreUnhandled();
+      }
+      function onUncaughtException(err) {
+        cleanup();
+        should.strictEqual(err, callbackError, 'uncaughtException');
+        done();
+      }
+      process.once('uncaughtException', onUncaughtException);
+      function onUnhandledRejection(err) {
+        cleanup();
+        done(new Error('callback shouldn\'t cause unhandledRejection'));
+      }
+      process.once('unhandledRejection', onUnhandledRejection);
+
+      function onRejected(err) {
+        cleanup();
+        done(new Error('Promise should not be rejected.'));
+      }
+
+      streamCompare(stream1, stream2, options, callback)
+        .catch(onRejected);
+      stream1.end();
+      stream2.end();
+    });
+
+    it('error causes unhandledRejection without a callback', function(done) {
+      var options = {
+        Promise: PPromise,
+        compare: deepEqual
+      };
+
+      var result, timeoutImmediate;
+
+      var restore = saveListeners(process, 'unhandledRejection');
+      function onUnhandledRejection(reason, p) {
+        clearImmediate(timeoutImmediate);
+        restore();
+        should.strictEqual(p, result, 'unhandledRejection');
+        done();
+      }
+      process.once('unhandledRejection', onUnhandledRejection);
+
+      function timeout() {
+        process.removeListener('unhandledRejection', onUnhandledRejection);
+        restore();
+        done(new Error('Should cause unhandledRejection'));
+      }
+
+      // Argument error returned via Promise
+      result = streamCompare(true, true, options);
+
+      // Note:  process.nextTick is insufficient delay.
+      timeoutImmediate = setImmediate(timeout);
+    });
+
+    // Since it is assumed the callback handled the error
+    it('doesn\'t cause unhandledRejection with a callback', function(done) {
+      // Note:  Global unhandledRejection listener may cause duplicate failures
+      process.once('unhandledRejection', done);
+
+      var options = {
+        Promise: PPromise,
+        compare: deepEqual
+      };
+      function callback() {}
+      // Argument error returned via Promise
+      var result = streamCompare(true, true, options, callback);
+      should(result).be.an.instanceof(PPromise);
+
+      // Note:  process.nextTick is insufficient delay.
+      setImmediate(function() {
+        process.removeListener('unhandledRejection', done);
+        done();
+      });
     });
   });
 

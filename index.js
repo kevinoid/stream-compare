@@ -7,6 +7,7 @@
 var EventEmitter = require('events').EventEmitter;
 var assign = require('object-assign');
 var debug = require('debug')('stream-compare');
+var nodeify = require('./lib/nodeify');
 
 /** Defines the available read policies.
  * @enum {string}
@@ -59,6 +60,9 @@ function StreamState() {
   this.totalDataLen = 0;
 }
 
+/** Same as streamCompare, but assumes its arguments are valid.
+ * @private
+ */
 function streamCompareInternal(stream1, stream2, options, callback) {
   var state1 = new StreamState();
   var state2 = new StreamState();
@@ -341,6 +345,41 @@ function streamCompareInternal(stream1, stream2, options, callback) {
   }
 }
 
+/** Same as streamCompare, but assumes callback is valid and doesn't return a
+ * Promise.
+ * @private
+ */
+function streamCompareCallback(stream1, stream2, options, callback) {
+  // Can change this to duck typing if there are non-EventEmitter streams
+  if (!(stream1 instanceof EventEmitter)) {
+    throw new TypeError('stream1 must be an EventEmitter');
+  }
+  // Can change this to duck typing if there are non-EventEmitter streams
+  if (!(stream2 instanceof EventEmitter)) {
+    throw new TypeError('stream2 must be an EventEmitter');
+  }
+  if (options.readPolicy === 'least' &&
+      (typeof stream1.read !== 'function' ||
+       typeof stream2.read !== 'function')) {
+    throw new TypeError('streams must have .read() for readPolicy \'least\'');
+  }
+  if (typeof options.compare !== 'function') {
+    throw new TypeError('options.compare must be a function');
+  }
+  if (!(options.events instanceof Array)) {
+    throw new TypeError('options.events must be an Array');
+  }
+  if (options.incremental && typeof options.incremental !== 'function') {
+    throw new TypeError('options.incremental must be a function');
+  }
+  if (!ReadPolicy.hasOwnProperty(options.readPolicy)) {
+    throw new RangeError('Invalid options.readPolicy \'' +
+        options.readPolicy + '\'');
+  }
+
+  streamCompareInternal(stream1, stream2, options, callback);
+}
+
 /** Compares the output of two Readable streams.
  *
  * Options:
@@ -387,6 +426,7 @@ function streamCompareInternal(stream1, stream2, options, callback) {
  * Options, or a comparison function (as described in options.compare).
  * @param {?function(Error, Object=)=} callback Callback with comparison result
  * or error.
+ * @return {Promise} A Promise with the result of the comparison function.
  */
 function streamCompare(stream1, stream2, optionsOrCompare, callback) {
   var options = assign(
@@ -400,57 +440,45 @@ function streamCompare(stream1, stream2, optionsOrCompare, callback) {
     options.compare = options.incremental;
   }
 
-  // Check arguments
-  if (!(stream1 instanceof EventEmitter)) {
-    // If anyone is rolling their own emitter we can change this to duck typing
-    throw new TypeError('stream1 must be an EventEmitter');
-  }
-  if (!(stream2 instanceof EventEmitter)) {
-    // If anyone is rolling their own emitter we can change this to duck typing
-    throw new TypeError('stream2 must be an EventEmitter');
-  }
-  if (options.readPolicy === 'least' &&
-      (typeof stream1.read !== 'function' ||
-       typeof stream2.read !== 'function')) {
-    throw new TypeError('streams must have .read() for readPolicy \'least\'');
-  }
+  // Check for argument errors which must be thrown
   if (callback && typeof callback !== 'function') {
     throw new TypeError('callback must be a function');
+  }
+  if (options.Promise &&
+      (typeof options.Promise !== 'function' ||
+       typeof options.Promise.reject !== 'function')) {
+    throw new Error('options.Promise must be a function' +
+        ' and have a .reject property');
   }
   if (!callback && !options.Promise) {
     throw new Error('Must provide callback or Promise type');
   }
-  if (typeof options.compare !== 'function') {
-    throw new TypeError('options.compare must be a function');
-  }
-  if (!(options.events instanceof Array)) {
-    throw new TypeError('options.events must be an Array');
-  }
-  if (options.incremental && typeof options.incremental !== 'function') {
-    throw new TypeError('options.incremental must be a function');
-  }
-  if (!ReadPolicy.hasOwnProperty(options.readPolicy)) {
-    throw new RangeError('Invalid options.readPolicy \'' + options.readPolicy +
-        '\'');
-  }
+
+  // From this point on we can return any errors using callback/Promise
+  // As long as callers pass a callback or Promise, we never throw and callers
+  // don't need to wrap in a try/catch.
 
   if (!options.Promise) {
-    return streamCompareInternal(stream1, stream2, options, callback);
+    try {
+      streamCompareCallback(stream1, stream2, options, callback);
+    } catch (err) {
+      process.nextTick(function() {
+        callback(err);
+      });
+    }
+    return undefined;
   }
 
-  return new options.Promise(function(resolve, reject) {
-    streamCompareInternal(stream1, stream2, options, function(err, val) {
+  var result = new options.Promise(function(resolve, reject) {
+    streamCompareCallback(stream1, stream2, options, function(err, val) {
       if (err) {
         reject(err);
       } else {
         resolve(val);
       }
-
-      if (callback) {
-        return callback.apply(this, arguments);
-      }
     });
   });
+  return nodeify(result, callback);
 }
 
 streamCompare.makeIncremental = require('./lib/make-incremental');

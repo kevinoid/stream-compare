@@ -564,7 +564,8 @@ describe('streamCompare', function() {
     it('compares delayed end events if delayed more', function(done) {
       var stream1 = new stream.PassThrough();
       var stream2 = new stream.PassThrough();
-      var eventDelay = 5;
+      // Since 0 is treated as 1, min is 1
+      var eventDelay = 1;
       var options = {
         compare: deepEqual,
         delay: eventDelay + 1

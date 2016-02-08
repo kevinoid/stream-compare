@@ -264,10 +264,11 @@ describe('streamCompare', function() {
     it('for invalid options.readPolicy', function(done) {
       var options = {
         compare: deepEqual,
-        readPolicy: true
+        readPolicy: 'invalid'
       };
       streamCompare(stream1, stream2, options, function(err) {
-        should(err).match({message: /\boptions\.readPolicy\b/});
+        should(err).be.an.instanceof(RangeError)
+          .and.match({message: /\boptions\.readPolicy\b/});
         done();
       });
     });

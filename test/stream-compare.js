@@ -423,7 +423,8 @@ describe('streamCompare', function() {
       var stream1 = new stream.PassThrough();
       var stream2 = new stream.PassThrough();
       var options = {
-        Promise: PPromise,
+        // Note:  Must use BBPromise for unhandledRejection on Node 0.12
+        Promise: BBPromise,
         compare: deepEqual
       };
       var callbackError = new Error('callback error');
@@ -462,7 +463,8 @@ describe('streamCompare', function() {
 
     it('error causes unhandledRejection without a callback', function(done) {
       var options = {
-        Promise: PPromise,
+        // Note:  Must use BBPromise for unhandledRejection on Node 0.12
+        Promise: BBPromise,
         compare: deepEqual
       };
 
@@ -496,13 +498,14 @@ describe('streamCompare', function() {
       process.once('unhandledRejection', done);
 
       var options = {
-        Promise: PPromise,
+        // Note:  Must use BBPromise for unhandledRejection on Node 0.12
+        Promise: BBPromise,
         compare: deepEqual
       };
       function callback() {}
       // Argument error returned via Promise
       var result = streamCompare(true, true, options, callback);
-      should(result).be.an.instanceof(PPromise);
+      should(result).be.an.instanceof(options.Promise);
 
       // Note:  process.nextTick is insufficient delay.
       setImmediate(function() {

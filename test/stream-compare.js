@@ -915,16 +915,15 @@ describe('streamCompare', function() {
       stream2.pause();
       stream2.write('hello');
 
-      // Delay long enough to ensure we don't read/finish
-      var testDelay = 10;
-      setTimeout(function() {
+      // Delay to ensure we don't read/finish
+      setImmediate(function() {
         should.strictEqual(isDone, false);
         isPaused = false;
         stream1.resume();
         stream2.resume();
         stream1.end();
         stream2.end();
-      }, testDelay);
+      });
     });
 
     it('compares the same stream as equal when \'flowing\'', function(done) {
@@ -1209,11 +1208,10 @@ describe('streamCompare', function() {
       stream1.end('llo');
       stream2.write('l');
 
-      var testDelay = 10;
-      setTimeout(function() {
+      setImmediate(function() {
         should.strictEqual(isDone, false);
         stream2.end('o');
-      }, testDelay);
+      });
     });
 
     it('returns early if streams differ before ending', function(done) {

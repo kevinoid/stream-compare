@@ -26,7 +26,7 @@
   ],
   "scripts": {
     "lint": "eslint . && echo Lint passed",
-    "preversion": "npm run test",
+    "preversion": "./scripts/preversion.js",
     "test": "npm run lint && npm run test-ci",
     "test-ci": "mocha --recursive test/",
     "test-cov": "istanbul cover _mocha test/",
@@ -45,7 +45,10 @@
     "eslint-config-airbnb": "^4.0.0",
     "istanbul": "^0.4.1",
     "mocha": "^2.3.4",
-    "should": "^8.0.2"
+    "pify": "^2.3.0",
+    "request": "^2.69.0",
+    "should": "^8.0.2",
+    "which": "^1.2.4"
   },
   "engines": {
     "node": ">=0.10"

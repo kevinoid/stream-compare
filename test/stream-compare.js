@@ -272,7 +272,7 @@ describe('streamCompare', function() {
       });
     });
 
-    ['events', 'incremental'].forEach(function(optionName) {
+    ['events', 'incremental', 'readPolicy'].forEach(function(optionName) {
       it('for invalid options.' + optionName, function(done) {
         var options = {
           compare: deepEqual

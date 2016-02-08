@@ -372,6 +372,9 @@ function streamCompareCallback(stream1, stream2, options, callback) {
   if (options.incremental && typeof options.incremental !== 'function') {
     throw new TypeError('options.incremental must be a function');
   }
+  if (typeof options.readPolicy !== 'string') {
+    throw new TypeError('options.readPolicy must be a string');
+  }
   if (!ReadPolicy.hasOwnProperty(options.readPolicy)) {
     throw new RangeError('Invalid options.readPolicy \'' +
         options.readPolicy + '\'');

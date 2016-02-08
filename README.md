@@ -7,6 +7,7 @@ comparison/assertion function.
 [![Build status](https://img.shields.io/travis/kevinoid/stream-compare.svg?style=flat)](https://travis-ci.org/kevinoid/stream-compare)
 [![Coverage](https://img.shields.io/codecov/c/github/kevinoid/stream-compare.svg?style=flat)](https://codecov.io/github/kevinoid/stream-compare?branch=master)
 [![Dependency Status](https://img.shields.io/david/kevinoid/stream-compare.svg?style=flat)](https://david-dm.org/kevinoid/stream-compare)
+[![Supported Node Version](https://img.shields.io/node/v/stream-compare.svg?style=flat)](https://www.npmjs.com/package/stream-compare)
 [![Version on NPM](https://img.shields.io/npm/v/stream-compare.svg?style=flat)](https://www.npmjs.com/package/stream-compare)
 
 

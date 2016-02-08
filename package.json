@@ -26,6 +26,7 @@
   ],
   "scripts": {
     "lint": "eslint . && echo Lint passed",
+    "postversion": "git push --tags origin master && echo \"Remember to update GitHub Releases from CHANGELOG.md\n(Until skywinder/github-changelog-generator#56 is fixed.)\"",
     "preversion": "./scripts/preversion.js",
     "test": "npm run lint && npm run test-ci",
     "test-ci": "mocha --recursive test/",

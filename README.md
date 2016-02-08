@@ -4,15 +4,10 @@ stream-compare
 Compare the output of two Readable streams using a caller-provided
 comparison/assertion function.
 
-[![Build status](https://img.shields.io/travis/kevinoid/stream-compare.svg?style=flat-square)](https://travis-ci.org/kevinoid/stream-compare)
-[![Code Climate](http://img.shields.io/codeclimate/github/kevinoid/stream-compare.svg?style=flat-square)](https://codeclimate.com/github/kevinoid/stream-compare)
-[![Coverage](https://img.shields.io/codecov/c/github/kevinoid/stream-compare.svg?style=flat-square)](https://codecov.io/github/kevinoid/stream-compare?branch=master)
-[![Coverage](https://img.shields.io/coveralls/kevinoid/stream-compare.svg?style=flat-square)](https://coveralls.io/r/kevinoid/stream-compare)
-[![Dependency Status](https://img.shields.io/david/kevinoid/stream-compare.svg?style=flat-square)](https://david-dm.org/kevinoid/stream-compare)
-[![License](http://img.shields.io/:license-mit-blue.svg)](http://mit-license.org)
-<!-- If no major bugs are found in the next few months, consider it stable. -->
-[![Stability](http://badges.github.io/stability-badges/dist/unstable.svg)](http://github.com/badges/stability-badges)
-[![Version](https://badge.fury.io/js/stream-compare.svg)](https://badge.fury.io/js/stream-compare)
+[![Build status](https://img.shields.io/travis/kevinoid/stream-compare.svg?style=flat)](https://travis-ci.org/kevinoid/stream-compare)
+[![Coverage](https://img.shields.io/codecov/c/github/kevinoid/stream-compare.svg?style=flat)](https://codecov.io/github/kevinoid/stream-compare?branch=master)
+[![Dependency Status](https://img.shields.io/david/kevinoid/stream-compare.svg?style=flat)](https://david-dm.org/kevinoid/stream-compare)
+[![Version on NPM](https://img.shields.io/npm/v/stream-compare.svg?style=flat)](https://www.npmjs.com/package/stream-compare)
 
 
 ## Introductory Example

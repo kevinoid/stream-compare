@@ -135,7 +135,7 @@ function streamCompareInternal(stream1, stream2, options, callback) {
   }
 
   // Note:  Add event listeners before endListeners so end/error is recorded
-  options.events.forEach(function(eventName) {
+  Array.prototype.forEach.call(options.events, function(eventName) {
     if (listeners1[eventName]) {
       return;
     }
@@ -444,8 +444,10 @@ function streamCompare(stream1, stream2, optionsOrCompare, callback) {
     if (typeof options.compare !== 'function') {
       throw new TypeError('options.compare must be a function');
     }
-    if (!(options.events instanceof Array)) {
-      throw new TypeError('options.events must be an Array');
+    if (!options.events ||
+        typeof options.events !== 'object' ||
+        options.events.length !== options.events.length | 0) {
+      throw new TypeError('options.events must be Array-like');
     }
     if (options.incremental && typeof options.incremental !== 'function') {
       throw new TypeError('options.incremental must be a function');

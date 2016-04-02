@@ -6,9 +6,6 @@
 
 var BBPromise = require('bluebird');
 var EventEmitter = require('events').EventEmitter;
-// Run the tests with the global/platform Promise type, if available
-// eslint-disable-next-line no-undef
-var PPromise = typeof Promise === 'undefined' ? BBPromise : Promise;
 var assert = require('assert');
 var bufferEqual = require('buffer-equal');
 var should = require('should');
@@ -16,27 +13,6 @@ var stream = require('stream');
 var streamCompare = require('..');
 
 var deepEqual = assert.deepStrictEqual || assert.deepEqual;
-
-/** Removes all listeners for a named event and returns a function which
- * will restore them.
- *
- * @param {!EventEmitter} emitter Event emitter for which to save listeners.
- * @param {string} eventName Name of the event for which to save listeners.
- * @return {function()} Function which will restore the saved listeners.
- * @private
- */
-function saveListeners(emitter, eventName) {
-  var savedListeners = emitter.listeners(eventName);
-  emitter.removeAllListeners(eventName);
-  return function restoreListeners() {
-    if (savedListeners) {
-      savedListeners.forEach(function(listener) {
-        emitter.on(eventName, listener);
-      });
-      savedListeners = null;
-    }
-  };
-}
 
 describe('streamCompare', function() {
   it('propagates the value returned by compare', function(done) {
@@ -257,7 +233,7 @@ describe('streamCompare', function() {
     it('for invalid optionsOrCompare', function(done) {
       streamCompare(stream1, stream2, true, function(err) {
         should(err).be.an.instanceof(TypeError)
-          .and.match({message: /\boptions\.compare\b/});
+          .and.match({message: /\boptions\.compare\b|\boptionsOrCompare\b/});
         done();
       });
     });
@@ -291,229 +267,101 @@ describe('streamCompare', function() {
     });
   });
 
-  describe('Promise', function() {
-    it('throws an Error if no callback or Promise is available', function() {
-      var stream1 = new stream.PassThrough();
-      var stream2 = new stream.PassThrough();
-      var options = {
-        Promise: null,
-        compare: deepEqual
-      };
+  describe('without global.Promise', function() {
+    var hadPromise, oldPromise;
 
-      should.throws(function() {
-        streamCompare(stream1, stream2, options);
-      }, /\bcallback\b|\boptions.Promise\b/);
+    before('remove global Promise', function() {
+      if (global.Promise) {
+        hadPromise = global.hasOwnProperty('Promise');
+        oldPromise = global.Promise;
+        // Note:  Deleting triggers Mocha's global leak detection.
+        // Also wouldn't work if global scope had a prototype chain.
+        global.Promise = undefined;
+      }
     });
 
-    it('throws if Promise type is invalid', function() {
-      var stream1 = new stream.PassThrough();
-      var stream2 = new stream.PassThrough();
-      var options = {
-        Promise: true,
-        compare: deepEqual
-      };
-
-      should.throws(function() {
-        streamCompare(stream1, stream2, options);
-      }, /\boptions\.Promise\b/);
-    });
-
-    it('returns a Promise of the requested type', function(done) {
-      var stream1 = new stream.PassThrough();
-      var stream2 = new stream.PassThrough();
-      var options = {
-        Promise: BBPromise,
-        compare: deepEqual
-      };
-
-      var result = streamCompare(stream1, stream2, options);
-      should(result).be.an.instanceof(BBPromise);
-      result.then(done, done);
-      stream1.end();
-      stream2.end();
-    });
-
-    it('returns an instance of global Promise by default', function(done) {
-      var stream1 = new stream.PassThrough();
-      var stream2 = new stream.PassThrough();
-
-      var hadPromise = global.hasOwnProperty('Promise');
-      var prevPromise = global.Promise;
-      global.Promise = BBPromise;
-
-      var result;
-      try {
-        result = streamCompare(stream1, stream2, deepEqual);
-        should(result).be.an.instanceof(BBPromise);
-      } finally {
+    after('restore global Promise', function() {
+      if (oldPromise) {
         if (hadPromise) {
-          global.Promise = prevPromise;
+          global.Promise = oldPromise;
         } else {
           delete global.Promise;
         }
       }
-
-      result.then(done, done);
-      stream1.end();
-      stream2.end();
     });
 
-    // Value checking is to prevent callback from contaminating the Promise
-    it('resolves Promise and calls callback with same value', function(done) {
-      // Note:  Order of callbacks is unspecified
-      var firstResult;
-      function checkResult(result) {
-        if (firstResult) {
-          should.strictEqual(result, firstResult);
-          done();
-        } else {
-          firstResult = result;
-        }
-      }
-      function callback(err, result) {
-        should.ifError(err);
-        checkResult(result);
-      }
-
+    it('throws without a callback', function() {
       var stream1 = new stream.PassThrough();
       var stream2 = new stream.PassThrough();
+
+      should.throws(
+        function() { streamCompare(stream1, stream2, deepEqual); },
+        function(err) {
+          return err instanceof TypeError && /\bcallback\b/.test(err.message);
+        }
+      );
+    });
+  });
+
+  describe('with global.Promise', function() {
+    var hadPromise, oldPromise;
+
+    before('ensure global Promise', function() {
+      if (typeof global.Promise !== 'function') {
+        hadPromise = global.hasOwnProperty('Promise');
+        oldPromise = global.Promise;
+        global.Promise = BBPromise;
+      }
+    });
+
+    after('restore global Promise', function() {
+      if (hadPromise === true) {
+        global.Promise = oldPromise;
+      } else if (hadPromise === false) {
+        delete global.Promise;
+      }
+    });
+
+    it('returns a Promise when called without a callback', function() {
+      var stream1 = new stream.PassThrough();
+      var stream2 = new stream.PassThrough();
+
+      var result = streamCompare(stream1, stream2, deepEqual);
+      should(result).be.an.instanceof(global.Promise);
+    });
+
+    it('resolves to value returned by compare', function() {
+      var compareValue = {};
       function compare(state1, state2) {
-        deepEqual(state1, state2);
-        return {};
-      }
-      var options = {
-        Promise: PPromise,
-        compare: compare
-      };
-      streamCompare(stream1, stream2, options, callback)
-        .then(checkResult, done);
-      stream1.end();
-      stream2.end();
-    });
-
-    // Error checking is to prevent callback from contaminating the Promise
-    it('rejects Promise and calls callback with same Error', function(done) {
-      // Note:  Order of callbacks is unspecified
-      var firstError;
-      function checkError(err) {
-        if (firstError) {
-          should.strictEqual(err, firstError);
-          done();
-        } else {
-          firstError = err;
-        }
-      }
-      function fail() {
-        done(new Error('Expected promise to be rejected'));
+        return compareValue;
       }
 
       var stream1 = new stream.PassThrough();
       var stream2 = new stream.PassThrough();
-      var options = {
-        Promise: PPromise,
-        compare: deepEqual
-      };
-      streamCompare(stream1, stream2, options, checkError)
-        .then(fail, checkError);
-      stream1.end('hello');
-      stream2.end();
-    });
-
-    // Prevent callback errors from contaminating the Promise, causing
-    // unhandledRejection, or going completely ignored.
-    it('callback errors cause uncaughtException', function(done) {
-      var stream1 = new stream.PassThrough();
-      var stream2 = new stream.PassThrough();
-      var options = {
-        // Note:  Must use BBPromise for unhandledRejection on Node 0.12
-        Promise: BBPromise,
-        compare: deepEqual
-      };
-      var callbackError = new Error('callback error');
-      function callback() { throw callbackError; }
-
-      var restoreUncaught = saveListeners(process, 'uncaughtException');
-      var restoreUnhandled = saveListeners(process, 'unhandledRejection');
-      function cleanup() {
-        process.removeListener('uncaughtException', onUncaughtException);
-        process.removeListener('unhandledRejection', onUnhandledRejection);
-        restoreUncaught();
-        restoreUnhandled();
-      }
-      function onUncaughtException(err) {
-        cleanup();
-        should.strictEqual(err, callbackError, 'uncaughtException');
-        done();
-      }
-      process.once('uncaughtException', onUncaughtException);
-      function onUnhandledRejection(err) {
-        cleanup();
-        done(new Error('callback shouldn\'t cause unhandledRejection'));
-      }
-      process.once('unhandledRejection', onUnhandledRejection);
-
-      function onRejected(err) {
-        cleanup();
-        done(new Error('Promise should not be rejected.'));
-      }
-
-      streamCompare(stream1, stream2, options, callback)
-        .catch(onRejected);
+      var promise = streamCompare(stream1, stream2, compare)
+        .then(function(result) {
+          should.strictEqual(result, compareValue);
+        });
       stream1.end();
       stream2.end();
+      return promise;
     });
 
-    it('error causes unhandledRejection without a callback', function(done) {
-      var options = {
-        // Note:  Must use BBPromise for unhandledRejection on Node 0.12
-        Promise: BBPromise,
-        compare: deepEqual
-      };
-
-      var result, timeoutImmediate;
-
-      var restore = saveListeners(process, 'unhandledRejection');
-      function onUnhandledRejection(reason, p) {
-        clearImmediate(timeoutImmediate);
-        restore();
-        should.strictEqual(p, result, 'unhandledRejection');
-        done();
-      }
-      process.once('unhandledRejection', onUnhandledRejection);
-
-      function timeout() {
-        process.removeListener('unhandledRejection', onUnhandledRejection);
-        restore();
-        done(new Error('Should cause unhandledRejection'));
+    it('rejects with value thrown by compare', function() {
+      var compareErr = new Error('test compare error');
+      function compare(state1, state2) {
+        throw compareErr;
       }
 
-      // Argument error returned via Promise
-      result = streamCompare(true, true, options);
-
-      // Note:  process.nextTick is insufficient delay.
-      timeoutImmediate = setImmediate(timeout);
-    });
-
-    // Since it is assumed the callback handled the error
-    it('doesn\'t cause unhandledRejection with a callback', function(done) {
-      // Note:  Global unhandledRejection listener may cause duplicate failures
-      process.once('unhandledRejection', done);
-
-      var options = {
-        // Note:  Must use BBPromise for unhandledRejection on Node 0.12
-        Promise: BBPromise,
-        compare: deepEqual
-      };
-      function callback() {}
-      // Argument error returned via Promise
-      var result = streamCompare(true, true, options, callback);
-      should(result).be.an.instanceof(options.Promise);
-
-      // Note:  process.nextTick is insufficient delay.
-      setImmediate(function() {
-        process.removeListener('unhandledRejection', done);
-        done();
-      });
+      var stream1 = new stream.PassThrough();
+      var stream2 = new stream.PassThrough();
+      var promise = streamCompare(stream1, stream2, compare).then(
+        function() { throw Error('Should not be called!'); },
+        function(err) { should.strictEqual(err, compareErr); }
+      );
+      stream1.end();
+      stream2.end();
+      return promise;
     });
   });
 

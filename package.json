@@ -40,7 +40,7 @@
   },
   "dependencies": {
     "debug": "^2.2.0",
-    "object-assign": "^4.0.1"
+    "extend": "^3.0.0"
   },
   "devDependencies": {
     "bluebird": ">=2.0.0",

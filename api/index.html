@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Home</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Home</h1>
+
+    
+
+
+
+    
+
+
+    <h3> </h3>
+
+
+
+
+
+
+
+
+
+
+    
+
+
+
+
+    <section>
+        <article><h1>stream-compare</h1><p><a href="https://travis-ci.org/kevinoid/stream-compare"><img src="https://img.shields.io/travis/kevinoid/stream-compare.svg?style=flat" alt="Build status"></a>
+<a href="https://codecov.io/github/kevinoid/stream-compare?branch=master"><img src="https://img.shields.io/codecov/c/github/kevinoid/stream-compare.svg?style=flat" alt="Coverage"></a>
+<a href="https://david-dm.org/kevinoid/stream-compare"><img src="https://img.shields.io/david/kevinoid/stream-compare.svg?style=flat" alt="Dependency Status"></a>
+<a href="https://www.npmjs.com/package/stream-compare"><img src="https://img.shields.io/node/v/stream-compare.svg?style=flat" alt="Supported Node Version"></a>
+<a href="https://www.npmjs.com/package/stream-compare"><img src="https://img.shields.io/npm/v/stream-compare.svg?style=flat" alt="Version on NPM"></a></p>
+<p>Compare the output of two Readable streams using a caller-provided
+comparison/assertion function.</p>
+<h2>Introductory Example</h2><pre class="prettyprint source lang-js"><code>var assert = require('assert');
+var fs = require('fs');
+var streamCompare = require('stream-compare');
+
+var stream1 = fs.createReadStream(file);
+var stream2 = fs.createReadStream(file);
+streamCompare(stream1, stream2, assert.deepStrictEqual, function(err) {
+  console.log(err); // AssertionError if streams differ
+});</code></pre><h2>Features</h2><p>This package is similar to the
+<a href="https://github.com/fent/node-stream-equal">stream-equal</a> package with several
+additional features:</p>
+<ul>
+<li>Support for caller-defined comparisons, which can return errors or values
+and are not limited to equality.</li>
+<li>Support for both incremental and one-shot comparisons.</li>
+<li>Support for caller-defined data reduction to avoid storing the entire stream
+history in memory before comparison.</li>
+<li>Makes no assumptions about the type of values read beyond whether they
+should be treated as objects (<code>objectMode</code>) or a stream of Buffers or
+strings.</li>
+<li>Does not do any coercion of the values read.</li>
+<li>Support for comparing (caller-configurable) events emitted by the streams.</li>
+<li>Support reading in flowing or non-flowing mode.</li>
+<li>Support for optionally aborting comparison on stream errors.</li>
+<li>Support for catching multiple end/error events (within one tick by default,
+or an optional configurable delay).</li>
+<li>Utility function for creating an incremental comparison and data-reduction
+function from a standard data comparison function (e.g. <code>assert.deepEqual</code>).</li>
+</ul>
+<h2>Installation</h2><p><a href="https://www.npmjs.com/package/stream-compare">This package</a> can be installed
+using <a href="https://www.npmjs.com/">npm</a>, either globally or locally, by running:</p>
+<pre class="prettyprint source lang-sh"><code>npm install stream-compare</code></pre><h2>Recipes</h2><h3>Compare Incrementally</h3><p>In order to avoid unnecessary memory use for streams with large amounts of
+data and avoid unnecessary delays for streams which produce data slowly, the
+output can be compared incrementally and inconclusive output can be removed.
+This is done by the incremental function.  To make this easier, the utility
+function <code>makeIncremental</code> creates such a function from a data comparison
+function and/or an events comparison function:</p>
+<pre class="prettyprint source lang-js"><code>var options = {
+  incremental: streamCompare.makeIncremental(
+    assert.deepStrictEqual,     // Compares data
+    assert.deepStrictEqual      // Compares events
+  )
+};
+streamCompare(stream1, stream2, options, function(err) {
+  console.log(err); // AssertionError if stream data values differ
+});</code></pre><h3>Compare Data Values Separately</h3><p>Sometimes it may be desirable to compare the values returned by <code>.read()</code> or
+<code>'data'</code> events separately, rather than concatenated together.  This can be
+done by setting <code>objectMode: true</code> (even if the values aren't <code>Object</code>s):</p>
+<pre class="prettyprint source lang-js"><code>var options = {
+  compare: assert.deepStrictEqual,
+  objectMode: true
+};
+streamCompare(stream1, stream2, options, function(err) {
+  console.log(err); // AssertionError if stream data values differ
+});</code></pre><h3>Compare Data and Event Interleaving</h3><p>In order to compare the ordering of <code>'data'</code> events with other events, add
+<code>'data'</code> to the <code>events</code> option and set <code>readPolicy</code> to <code>'flowing'</code> or
+<code>'none'</code>.  Any <code>'data'</code> events and their arguments will appear with any other
+matching events in the <code>events</code> property of the state object.</p>
+<pre class="prettyprint source lang-js"><code>var options = {
+  compare: assert.deepStrictEqual,
+  events: ['close', 'data', 'end', 'error'],
+  readPolicy: 'none'
+};
+streamCompare(stream1, stream2, options, function(err) {
+  console.log(err); // AssertionError if stream events (including 'data') differ
+});</code></pre><p>More examples can be found in the <a href="https://kevinoid.github.io/stream-compare/specs">test
+specifications</a>.</p>
+<h2>API Docs</h2><p>For the details of using this module as a library, see the <a href="https://kevinoid.github.io/stream-compare/api">API
+Documentation</a>.</p>
+<h2>Contributing</h2><p>Contributions are welcome and very much appreciated!  Please add tests to
+cover any changes and ensure <code>npm test</code> passes.</p>
+<p>If the desired change is large, complex, backwards-incompatible, can have
+significantly differing implementations, or may not be in scope for this
+project, opening an issue before writing the code can avoid frustration and
+save a lot of time and effort.</p>
+<h2>License</h2><p>This package is available under the terms of the
+<a href="https://opensource.org/licenses/MIT">MIT License</a>.</p></article>
+    </section>
+
+
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="StreamState.html">StreamState</a></li></ul><h3>Global</h3><ul><li><a href="global.html#DEFAULT_OPTIONS">DEFAULT_OPTIONS</a></li><li><a href="global.html#incrementalProp">incrementalProp</a></li><li><a href="global.html#ReadPolicy">ReadPolicy</a></li><li><a href="global.html#streamCompare">streamCompare</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.4.0</a> on Sat Apr 02 2016 10:57:54 GMT-0700 (PDT)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>

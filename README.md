@@ -1,15 +1,14 @@
 stream-compare
 ==============
 
-Compare the output of two Readable streams using a caller-provided
-comparison/assertion function.
-
 [![Build status](https://img.shields.io/travis/kevinoid/stream-compare.svg?style=flat)](https://travis-ci.org/kevinoid/stream-compare)
 [![Coverage](https://img.shields.io/codecov/c/github/kevinoid/stream-compare.svg?style=flat)](https://codecov.io/github/kevinoid/stream-compare?branch=master)
 [![Dependency Status](https://img.shields.io/david/kevinoid/stream-compare.svg?style=flat)](https://david-dm.org/kevinoid/stream-compare)
 [![Supported Node Version](https://img.shields.io/node/v/stream-compare.svg?style=flat)](https://www.npmjs.com/package/stream-compare)
 [![Version on NPM](https://img.shields.io/npm/v/stream-compare.svg?style=flat)](https://www.npmjs.com/package/stream-compare)
 
+Compare the output of two Readable streams using a caller-provided
+comparison/assertion function.
 
 ## Introductory Example
 
@@ -52,8 +51,8 @@ additional features:
 
 ## Installation
 
-This package is available on [npm](https://www.npmjs.com/) as
-[`stream-compare`](https://www.npmjs.com/package/stream-compare)
+[This package](https://www.npmjs.com/package/stream-compare) can be installed
+using [npm](https://www.npmjs.com/), either globally or locally, by running:
 
 ```sh
 npm install stream-compare
@@ -117,14 +116,28 @@ streamCompare(stream1, stream2, options, function(err) {
 });
 ```
 
-Additional examples and behavior guarantees are available in the
-[streamCompare tests](test/stream-compare.js).
+More examples can be found in the [test
+specifications](https://kevinoid.github.io/stream-compare/specs).
 
 
-## API
+## API Docs
+
+For the details of using this module as a library, see the [API
+Documentation](https://kevinoid.github.io/stream-compare/api).
+
+
+## Contributing
+
+Contributions are welcome and very much appreciated!  Please add tests to
+cover any changes and ensure `npm test` passes.
+
+If the desired change is large, complex, backwards-incompatible, can have
+significantly differing implementations, or may not be in scope for this
+project, opening an issue before writing the code can avoid frustration and
+save a lot of time and effort.
 
 
 ## License
 
-`stream-compare` is available under the terms of the
+This package is available under the terms of the
 [MIT License](https://opensource.org/licenses/MIT).

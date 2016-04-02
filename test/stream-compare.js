@@ -7,6 +7,7 @@
 var BBPromise = require('bluebird');
 var EventEmitter = require('events').EventEmitter;
 // Run the tests with the global/platform Promise type, if available
+// eslint-disable-next-line no-undef
 var PPromise = typeof Promise === 'undefined' ? BBPromise : Promise;
 var assert = require('assert');
 var bufferEqual = require('buffer-equal');

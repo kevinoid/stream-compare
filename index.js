@@ -434,6 +434,7 @@ function streamCompareCallback(stream1, stream2, options, callback) {
 function streamCompare(stream1, stream2, optionsOrCompare, callback) {
   var options = assign(
       // Default Promise to global Promise at time of call, if defined
+      // eslint-disable-next-line no-undef
       {Promise: typeof Promise === 'function' && Promise},
       DEFAULT_OPTIONS,
       typeof optionsOrCompare === 'function' ? {compare: optionsOrCompare} :

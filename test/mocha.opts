@@ -1,4 +1,2 @@
 --check-leaks
 --no-exit
---reporter spec
---timeout 2000

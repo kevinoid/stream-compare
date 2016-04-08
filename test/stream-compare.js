@@ -559,9 +559,14 @@ describe('streamCompare', function() {
         should(err).be.an.instanceof(assert.AssertionError);
         done();
       });
-      stream1.end();
+      // streamCompare may read from either stream first and the 'end' event
+      // does not fire until read() is called after EOF, so we emit directly
+      // for first stream.  Then streamCompare must read from the second.
       stream1.emit('end');
-      stream2.end();
+      process.nextTick(function() {
+        stream1.emit('end');
+        stream2.end();
+      });
     });
 
     it('compares immediate overlapping end events', function(done) {
@@ -573,7 +578,11 @@ describe('streamCompare', function() {
       });
       stream1.end();
       stream2.end();
-      stream1.emit('end');
+      stream2.once('end', function() {
+        process.nextTick(function() {
+          stream1.emit('end');
+        });
+      });
     });
   });
 

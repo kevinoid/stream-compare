@@ -83,8 +83,6 @@ function streamCompareInternal(stream1, stream2, options, callback) {
   var isDone = false;
   var listeners1 = {};
   var listeners2 = {};
-  var endListener1;
-  var endListener2;
 
   /** Gets the name of a stream for logging purposes. */
   function streamName(stream) {
@@ -161,9 +159,7 @@ function streamCompareInternal(stream1, stream2, options, callback) {
       return;
     }
 
-    function listener() {
-      debug('\'' + eventName + '\' event from ' + streamName(this) + '.');
-
+    function listener(/* event args */) {
       this.events.push({
         name: eventName,
         args: Array.prototype.slice.call(arguments)
@@ -174,23 +170,29 @@ function streamCompareInternal(stream1, stream2, options, callback) {
       }
     }
 
-    listeners1[eventName] = listener.bind(state1);
+    listeners1[eventName] = function listener1() {
+      debug('\'' + eventName + '\' event from stream1.');
+      listener.apply(state1, arguments);
+    };
     stream1.on(eventName, listeners1[eventName]);
 
-    listeners2[eventName] = listener.bind(state2);
+    listeners2[eventName] = function listener2() {
+      debug('\'' + eventName + '\' event from stream2.');
+      listener.apply(state2, arguments);
+    };
     stream2.on(eventName, listeners2[eventName]);
   });
 
-  /** @this {!StreamState} */
-  function endListener() {
+  /** @this {!Readable} */
+  function endListener(state) {
     // Note:  If incremental is conclusive for 'end' event, this will be called
     // with isDone === true, since removeListener doesn't affect listeners for
     // an event which is already in-progress.
-    if (this.ended || isDone) {
+    if (state.ended || isDone) {
       return;
     }
 
-    this.ended = true;
+    state.ended = true;
     ++ended;
 
     debug(streamName(this) + ' has ended.');
@@ -214,10 +216,14 @@ function streamCompareInternal(stream1, stream2, options, callback) {
     }
   }
 
-  endListener1 = endListener.bind(state1);
+  function endListener1() {
+    endListener.call(this, state1);
+  }
   stream1.on('end', endListener1);
 
-  endListener2 = endListener.bind(state2);
+  function endListener2() {
+    endListener.call(this, state2);
+  }
   stream2.on('end', endListener2);
 
   if (options.abortOnError) {

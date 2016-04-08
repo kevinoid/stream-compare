@@ -88,7 +88,9 @@ function streamCompareInternal(stream1, stream2, options, callback) {
 
   /** Gets the name of a stream for logging purposes. */
   function streamName(stream) {
-    return stream === stream1 ? 'stream1' : 'stream2';
+    return stream === stream1 ? 'stream1' :
+      stream === stream2 ? 'stream2' :
+      'unknown stream';
   }
 
   function done() {

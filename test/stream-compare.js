@@ -152,8 +152,9 @@ describe('streamCompare', function() {
   });
 
   it('compares same-data same-writes as equal', function(done) {
-    var stream1 = new stream.PassThrough();
-    var stream2 = new stream.PassThrough();
+    // Note:  objectMode to prevent write-combining
+    var stream1 = new stream.PassThrough({objectMode: true});
+    var stream2 = new stream.PassThrough({objectMode: true});
     streamCompare(stream1, stream2, deepEqual, done);
     stream1.write('hello');
     stream1.end(' world');
@@ -170,9 +171,18 @@ describe('streamCompare', function() {
     stream2.end(' world');
   });
 
+  it('compares different-writes to objectMode streams equal', function(done) {
+    var stream1 = new stream.PassThrough({objectMode: true});
+    var stream2 = new stream.PassThrough({objectMode: true});
+    streamCompare(stream1, stream2, deepEqual, done);
+    stream1.end('hello world');
+    stream2.write('hello');
+    stream2.end(' world');
+  });
+
   it('compares different-writes as non-equal in objectMode', function(done) {
-    var stream1 = new stream.PassThrough();
-    var stream2 = new stream.PassThrough();
+    var stream1 = new stream.PassThrough({objectMode: true});
+    var stream2 = new stream.PassThrough({objectMode: true});
     var options = {
       compare: deepEqual,
       objectMode: true
@@ -934,8 +944,9 @@ describe('streamCompare', function() {
         throw new Error('compare shouldn\'t be called');
       }
 
-      var stream1 = new stream.PassThrough();
-      var stream2 = new stream.PassThrough();
+      // Note:  objectMode to prevent write-combining
+      var stream1 = new stream.PassThrough({objectMode: true});
+      var stream2 = new stream.PassThrough({objectMode: true});
       var options = {
         compare: compare,
         incremental: streamCompare.makeIncremental(compareData)
@@ -993,8 +1004,9 @@ describe('streamCompare', function() {
         should.strictEqual(state2.data.length, 0);
       }
 
-      var stream1 = new stream.PassThrough();
-      var stream2 = new stream.PassThrough();
+      // Note:  objectMode to prevent write-combining
+      var stream1 = new stream.PassThrough({objectMode: true});
+      var stream2 = new stream.PassThrough({objectMode: true});
       var options = {
         compare: compare,
         incremental: streamCompare.makeIncremental(deepEqual)
@@ -1013,8 +1025,13 @@ describe('streamCompare', function() {
         should.strictEqual(state2.data.length, 0);
       }
 
-      var stream1 = new stream.PassThrough({encoding: 'utf8'});
-      var stream2 = new stream.PassThrough({encoding: 'utf8'});
+      var streamOptions = {
+        encoding: 'utf8',
+        // Note:  objectMode to prevent write-combining
+        objectMode: true
+      };
+      var stream1 = new stream.PassThrough(streamOptions);
+      var stream2 = new stream.PassThrough(streamOptions);
       var options = {
         compare: compare,
         incremental: streamCompare.makeIncremental(deepEqual)
@@ -1046,8 +1063,9 @@ describe('streamCompare', function() {
     });
 
     it('doesn\'t return early due to incompleteness', function(done) {
-      var stream1 = new stream.PassThrough();
-      var stream2 = new stream.PassThrough();
+      // Note:  objectMode to prevent write-combining
+      var stream1 = new stream.PassThrough({objectMode: true});
+      var stream2 = new stream.PassThrough({objectMode: true});
       var options = {
         incremental: streamCompare.makeIncremental(deepEqual)
       };

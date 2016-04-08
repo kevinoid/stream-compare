@@ -151,6 +151,25 @@ describe('streamCompare', function() {
     stream2.end('world');
   });
 
+  // This test ensures StreamComparison doesn't emit before constructing
+  it('compares buffered different-data streams as not equal', function(done) {
+    var compareVal = false;
+    function compare(state1, state2) {
+      return compareVal;
+    }
+    var stream1 = new stream.PassThrough();
+    var stream2 = new stream.PassThrough();
+    stream1.end('hello');
+    stream2.end('world');
+    process.nextTick(function() {
+      streamCompare(stream1, stream2, compare, function(err, result) {
+        should.ifError(err);
+        should.strictEqual(result, compareVal);
+        done();
+      });
+    });
+  });
+
   it('compares same-data same-writes as equal', function(done) {
     // Note:  objectMode to prevent write-combining
     var stream1 = new stream.PassThrough({objectMode: true});
@@ -1137,6 +1156,32 @@ describe('streamCompare', function() {
       // stream1 writes more data than stream2 but doesn't end
       stream1.write('hello');
       stream2.end();
+    });
+
+    // This test ensures StreamComparison doesn't emit before constructing
+    // Note:  Avoids throwing from compare since 'error' gets thrown and caught
+    // outside of the constructor.
+    it('compares buffered different-data streams as not equal', function(done) {
+      var incrementalVal = false;
+      var stream1 = new stream.PassThrough();
+      var stream2 = new stream.PassThrough();
+      stream1.end('hello');
+      stream2.end('world');
+      process.nextTick(function() {
+        var options = {
+          compare: function compare(state1, state2) {
+            throw new Error('compare shouldn\'t be called');
+          },
+          incremental: function incremental(state1, state2) {
+            return incrementalVal;
+          }
+        };
+        streamCompare(stream1, stream2, options, function(err, result) {
+          should.ifError(err);
+          should.strictEqual(result, incrementalVal);
+          done();
+        });
+      });
     });
   });
 });

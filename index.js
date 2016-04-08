@@ -288,6 +288,8 @@ function streamCompareInternal(stream1, stream2, options, callback) {
 
   /** Handles data read from the stream for a given state. */
   function handleData(state, data) {
+    debug('Read data from ', streamName(this));
+
     try {
       addData.call(state, data);
     } catch (err) {
@@ -324,7 +326,7 @@ function streamCompareInternal(stream1, stream2, options, callback) {
         return;
       }
 
-      handleData(state, data);
+      handleData.call(stream, state, data);
     }
   }
 
@@ -349,8 +351,8 @@ function streamCompareInternal(stream1, stream2, options, callback) {
   switch (options.readPolicy) {
     case 'flowing':
       debug('Will read from streams in flowing mode.');
-      stream1.on('data', handleData.bind(null, state1));
-      stream2.on('data', handleData.bind(null, state2));
+      stream1.on('data', handleData.bind(stream1, state1));
+      stream2.on('data', handleData.bind(stream2, state2));
       break;
 
     case 'least':

@@ -7,6 +7,7 @@
 var EventEmitter = require('events').EventEmitter;
 var debug = require('debug')('stream-compare');
 var extend = require('extend');
+var inherits = require('util').inherits;
 
 /** Defines the available read policies.
  * @enum {string}
@@ -73,10 +74,87 @@ function StreamState() {
   this.totalDataLen = 0;
 }
 
-/** Same as streamCompare, but assumes its arguments are valid.
- * @private
+/** Compares two streams.
+ *
+ * This class presents a Readable-like interface to simplify consumption of the
+ * comparison result.
+ *
+ * Events:
+ * <dl>
+ * <dt><code>'data'</code></dt>
+ * <dd>The comparison result</dd>
+ * <dt><code>'end'</code></dt>
+ * <dd>The comparison has ended and no differences were found.</dd>
+ * <dt><code>'error'</code></dt>
+ * <dd>A comparison error occurred.  (Note:  Not a stream error.)</dd>
+ * </dl>
+ *
+ * @constructor
+ * @extends EventEmitter
+ * @ template CompareResult
+ * @param {!stream.Readable} stream1 First stream to compare.
+ * @param {!stream.Readable} stream2 Second stream to compare.
+ * @param {!StreamCompareOptions<CompareResult>|
+ * function(!StreamState,!StreamState): CompareResult}
+ * optionsOrCompare Options, or a comparison function (as described in
+ * {@link options.compare}).
  */
-function streamCompareInternal(stream1, stream2, options, callback) {
+function StreamComparison(stream1, stream2, optionsOrCompare) {
+  if (!(this instanceof StreamComparison)) {
+    return new StreamComparison(stream1, stream2, optionsOrCompare);
+  }
+
+  EventEmitter.call(this);
+
+  var options;
+  if (optionsOrCompare) {
+    if (typeof optionsOrCompare === 'function') {
+      options = {compare: optionsOrCompare};
+    } else if (typeof optionsOrCompare === 'object') {
+      options = optionsOrCompare;
+    } else {
+      throw new TypeError('optionsOrCompare must be an object or function');
+    }
+  }
+
+  options = extend({}, DEFAULT_OPTIONS, options);
+  if (!options.compare) {
+    options.compare = options.incremental;
+  }
+
+  // Can change this to duck typing if there are non-EventEmitter streams
+  if (!(stream1 instanceof EventEmitter)) {
+    throw new TypeError('stream1 must be an EventEmitter');
+  }
+  // Can change this to duck typing if there are non-EventEmitter streams
+  if (!(stream2 instanceof EventEmitter)) {
+    throw new TypeError('stream2 must be an EventEmitter');
+  }
+  if (options.readPolicy === 'least' &&
+      (typeof stream1.read !== 'function' ||
+       typeof stream2.read !== 'function')) {
+    throw new TypeError('streams must have .read() for readPolicy \'least\'');
+  }
+  if (typeof options.compare !== 'function') {
+    throw new TypeError('options.compare must be a function');
+  }
+  if (!options.events ||
+      typeof options.events !== 'object' ||
+      options.events.length !== options.events.length | 0) {
+    throw new TypeError('options.events must be Array-like');
+  }
+  if (options.incremental && typeof options.incremental !== 'function') {
+    throw new TypeError('options.incremental must be a function');
+  }
+  if (typeof options.readPolicy !== 'string') {
+    throw new TypeError('options.readPolicy must be a string');
+  }
+  if (!ReadPolicy.hasOwnProperty(options.readPolicy)) {
+    throw new RangeError('Invalid options.readPolicy \'' +
+        options.readPolicy + '\'');
+  }
+
+  var self = this;
   var state1 = new StreamState();
   var state2 = new StreamState();
   var ended = 0;
@@ -91,7 +169,7 @@ function streamCompareInternal(stream1, stream2, options, callback) {
       'unknown stream';
   }
 
-  function done() {
+  function done(err, result) {
     isDone = true;
 
     debug('Unregistering stream event listeners...');
@@ -114,8 +192,16 @@ function streamCompareInternal(stream1, stream2, options, callback) {
     stream2.removeListener('end', readNextOnEnd);
     stream2.removeListener('end', endListener2);
 
-    debug('All done.  Calling callback...');
-    return callback.apply(this, arguments);
+    if (err) {
+      debug('Comparison finished with error.');
+      self.emit('error', err);
+    } else if (result !== undefined) {
+      debug('Comparison finished with a result.');
+      self.emit('data', result);
+    } else {
+      debug('Comparison finished without a result.');
+      self.emit('end');
+    }
   }
 
   function doCompare() {
@@ -359,7 +445,7 @@ function streamCompareInternal(stream1, stream2, options, callback) {
       debug('Will read from stream with least output.');
       stream1.once('end', readNextOnEnd);
       stream2.once('end', readNextOnEnd);
-      readNext();
+      process.nextTick(readNext);
       break;
 
     default:
@@ -367,6 +453,7 @@ function streamCompareInternal(stream1, stream2, options, callback) {
       break;
   }
 }
+inherits(StreamComparison, EventEmitter);
 
 /** Options for {@link streamCompare}.
  *
@@ -446,54 +533,9 @@ function streamCompare(stream1, stream2, optionsOrCompare, callback) {
   // pass a callback or have global.Promise, this function will never throw and
   // callers don't need to wrap in a try/catch.
 
-  var options;
+  var comparison;
   try {
-    if (optionsOrCompare) {
-      if (typeof optionsOrCompare === 'function') {
-        options = {compare: optionsOrCompare};
-      } else if (typeof optionsOrCompare === 'object') {
-        options = optionsOrCompare;
-      } else {
-        throw new TypeError('optionsOrCompare must be an object or function');
-      }
-    }
-
-    options = extend({}, DEFAULT_OPTIONS, options);
-    if (!options.compare) {
-      options.compare = options.incremental;
-    }
-
-    // Can change this to duck typing if there are non-EventEmitter streams
-    if (!(stream1 instanceof EventEmitter)) {
-      throw new TypeError('stream1 must be an EventEmitter');
-    }
-    // Can change this to duck typing if there are non-EventEmitter streams
-    if (!(stream2 instanceof EventEmitter)) {
-      throw new TypeError('stream2 must be an EventEmitter');
-    }
-    if (options.readPolicy === 'least' &&
-        (typeof stream1.read !== 'function' ||
-         typeof stream2.read !== 'function')) {
-      throw new TypeError('streams must have .read() for readPolicy \'least\'');
-    }
-    if (typeof options.compare !== 'function') {
-      throw new TypeError('options.compare must be a function');
-    }
-    if (!options.events ||
-        typeof options.events !== 'object' ||
-        options.events.length !== options.events.length | 0) {
-      throw new TypeError('options.events must be Array-like');
-    }
-    if (options.incremental && typeof options.incremental !== 'function') {
-      throw new TypeError('options.incremental must be a function');
-    }
-    if (typeof options.readPolicy !== 'string') {
-      throw new TypeError('options.readPolicy must be a string');
-    }
-    if (!ReadPolicy.hasOwnProperty(options.readPolicy)) {
-      throw new RangeError('Invalid options.readPolicy \'' +
-          options.readPolicy + '\'');
-    }
+    comparison = new StreamComparison(stream1, stream2, optionsOrCompare);
   } catch (err) {
     process.nextTick(function() {
       callback(err);
@@ -501,10 +543,18 @@ function streamCompare(stream1, stream2, optionsOrCompare, callback) {
     return undefined;
   }
 
-  streamCompareInternal(stream1, stream2, options, callback);
+  comparison.on('data', function(result) {
+    callback(null, result);
+  });
+  comparison.on('error', function(err) {
+    callback(err);
+  });
+  comparison.on('end', callback);
+
   return undefined;
 }
 
+streamCompare.StreamComparison = StreamComparison;
 streamCompare.makeIncremental = require('./lib/make-incremental');
 
 module.exports = streamCompare;

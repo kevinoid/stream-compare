@@ -161,6 +161,8 @@ function StreamComparison(stream1, stream2, optionsOrCompare) {
   var isDone = false;
   var listeners1 = {};
   var listeners2 = {};
+  var postEndImmediate;
+  var postEndTimeout;
 
   /** Gets the name of a stream for logging purposes. */
   function streamName(stream) {
@@ -191,6 +193,9 @@ function StreamComparison(stream1, stream2, optionsOrCompare) {
     stream2.removeListener('error', done);
     stream2.removeListener('end', readNextOnEnd);
     stream2.removeListener('end', endListener2);
+
+    clearImmediate(postEndImmediate);
+    clearTimeout(postEndTimeout);
 
     if (err) {
       debug('Comparison finished with error.');
@@ -293,11 +298,11 @@ function StreamComparison(stream1, stream2, optionsOrCompare) {
       if (options.delay) {
         debug('All streams have ended.  Delaying for ' + options.delay +
             'ms before final compare.');
-        setTimeout(doCompare, options.delay);
+        postEndTimeout = setTimeout(doCompare, options.delay);
       } else {
         // Let pending I/O and callbacks complete to catch some errant events
         debug('All streams have ended.  Delaying before final compare.');
-        setImmediate(doCompare);
+        postEndImmediate = setImmediate(doCompare);
       }
     }
   }

@@ -1207,7 +1207,7 @@ describe('StreamComparison', function() {
         assert.strictEqual(data, compareValue);
       });
       comparison.on('error', function(err) {
-        throw new Error('should not emit error');
+        assert.ifError(err || new Error('should not emit error'));
       });
 
       var ended = false;
@@ -1246,7 +1246,7 @@ describe('StreamComparison', function() {
         assert.strictEqual(data, compareValue);
       });
       comparison.on('error', function(err) {
-        throw new Error('should not emit error');
+        assert.ifError(err || new Error('should not emit error'));
       });
 
       var ended = false;
@@ -1288,7 +1288,7 @@ describe('StreamComparison', function() {
         assert.strictEqual(data, compareValue);
       });
       comparison.on('error', function(err) {
-        throw new Error('should not emit error');
+        assert.ifError(err || new Error('should not emit error'));
       });
 
       var testData = new Buffer('test');
@@ -1332,7 +1332,7 @@ describe('StreamComparison', function() {
         throw new Error('should not emit data');
       });
       comparison.on('error', function(err) {
-        throw new Error('should not emit error');
+        assert.ifError(err || new Error('should not emit error'));
       });
       comparison.on('end', function() {
         assert.strictEqual(ended, false);

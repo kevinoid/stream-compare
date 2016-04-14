@@ -554,7 +554,9 @@ inherits(StreamComparison, EventEmitter);
  * optionsOrCompare Options, or a comparison function (as described in
  * {@link options.compare}).
  * @param {?function(Error, CompareResult=)=} callback Callback with comparison
- * result or error.
+ * result or error.  If error is falsey, an Error instance with a
+ * <code>.cause</code> property set to the falsey value will be passed instead,
+ * to prevent common logic errors.
  * @return {Promise<CompareResult>|undefined} If <code>callback</code> is not
  * given and <code>global.Promise</code> is defined, a <code>Promise</code>
  * with the comparison result or error.
@@ -594,7 +596,15 @@ function streamCompare(stream1, stream2, optionsOrCompare, callback) {
   });
   comparison.on('error', function(err) {
     didCallback = true;
-    callback(err);
+
+    // Note:  Same convention as promise-nodeify to prevent falsey error
+    var truthyErr = err;
+    if (!err) {
+      truthyErr = new Error(err + '');
+      truthyErr.cause = err;
+    }
+
+    callback(truthyErr);
   });
   comparison.on('end', function() {
     if (!didCallback) {

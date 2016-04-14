@@ -49,6 +49,23 @@ describe('streamCompare', function() {
     stream2.end();
   });
 
+  it('propagates Error with .cause for falsey compare throw', function(done) {
+    var compareErr = false;
+    function compare(state1, state2) {
+      throw compareErr;
+    }
+
+    var stream1 = new stream.PassThrough();
+    var stream2 = new stream.PassThrough();
+    streamCompare(stream1, stream2, compare, function(err) {
+      should(err).be.an.instanceof(Error);
+      should.strictEqual(err.cause, compareErr);
+      done();
+    });
+    stream1.end();
+    stream2.end();
+  });
+
   it('passes stream state information to compare', function(done) {
     var data1 = new Buffer('hello');
     var data2 = new Buffer('there');
@@ -1188,6 +1205,23 @@ describe('streamCompare', function() {
 });
 
 describe('StreamComparison', function() {
+  it('emits falsey value thrown by compare as-is', function(done) {
+    var compareErr = false;
+    function compare(state1, state2) {
+      throw compareErr;
+    }
+
+    var stream1 = new stream.PassThrough();
+    var stream2 = new stream.PassThrough();
+    var comparison = new StreamComparison(stream1, stream2, compare);
+    comparison.on('error', function(err) {
+      assert.strictEqual(err, compareErr);
+      done();
+    });
+    stream1.end();
+    stream2.end();
+  });
+
   describe('#checkpoint()', function() {
     it('does a non-incremental comparison and ends on result', function(done) {
       var compareCount = 0;

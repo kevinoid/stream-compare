@@ -116,6 +116,44 @@ streamCompare(stream1, stream2, options, function(err) {
 });
 ```
 
+### Control comparison checkpoints
+
+It is possible to use the `StreamComparison` class directly to compare streams
+non-incrementally at particular execution points in addition to, or instead
+of, when both streams have ended, as is done by the `streamCompare` function.
+The full details of this class are available in the [API
+Documentation](https://kevinoid.github.io/stream-compare/api/StreamComparison.html).
+
+```js
+var streamCompare = require('stream-compare');
+var StreamComparison = streamCompare.StreamComparison;
+
+var stream1 = new PassThrough();
+var stream2 = new PassThrough();
+var comparison = new StreamComparison(stream1, stream2, assert.deepStrictEqual);
+comparison.on('data', function(result) {
+  console.log('compare returned ' + result);
+});
+comparison.on('error', function(err) {
+  console.log('compare threw ' + err);
+});
+comparison.on('end', function() {
+  console.log('comparison finished');
+});
+stream1.write('Hello');
+stream2.write('Hello');
+process.nextTick(function() {
+  comparison.checkpoint();
+
+  stream1.write(' world!');
+  stream2.write(' world!');
+
+  process.nextTick(function() {
+    comparison.end();
+  });
+});
+```
+
 More examples can be found in the [test
 specifications](https://kevinoid.github.io/stream-compare/specs).
 

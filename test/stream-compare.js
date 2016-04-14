@@ -12,6 +12,7 @@ var should = require('should');
 var stream = require('stream');
 var streamCompare = require('..');
 
+var StreamComparison = streamCompare.StreamComparison;
 var deepEqual = assert.deepStrictEqual || assert.deepEqual;
 
 describe('streamCompare', function() {
@@ -1182,6 +1183,208 @@ describe('streamCompare', function() {
           done();
         });
       });
+    });
+  });
+});
+
+describe('StreamComparison', function() {
+  describe('#checkpoint()', function() {
+    it('does a non-incremental comparison and ends on result', function(done) {
+      var compareCount = 0;
+      var compareValue = false;
+      function compare(state1, state2) {
+        ++compareCount;
+        return compareValue;
+      }
+
+      var stream1 = new stream.PassThrough();
+      var stream2 = new stream.PassThrough();
+      var comparison = new StreamComparison(stream1, stream2, compare);
+
+      var dataCount = 0;
+      comparison.on('data', function(data) {
+        ++dataCount;
+        assert.strictEqual(data, compareValue);
+      });
+      comparison.on('error', function(err) {
+        throw new Error('should not emit error');
+      });
+
+      var ended = false;
+      comparison.on('end', function() {
+        assert.strictEqual(ended, false);
+        ended = true;
+        assert.strictEqual(dataCount, 1);
+
+        setImmediate(function() {
+          assert.strictEqual(compareCount, 1);
+          assert.strictEqual(dataCount, 1);
+          done();
+        });
+      });
+
+      setImmediate(function() {
+        assert.strictEqual(dataCount, 0);
+        comparison.checkpoint();
+        assert.strictEqual(dataCount, 1);
+      });
+    });
+
+    it('does not emit for compare non-result', function(done) {
+      var compareValue = undefined;
+      function compare(state1, state2) {
+        return compareValue;
+      }
+
+      var stream1 = new stream.PassThrough();
+      var stream2 = new stream.PassThrough();
+      var comparison = new StreamComparison(stream1, stream2, compare);
+
+      var dataCount = 0;
+      comparison.on('data', function(data) {
+        ++dataCount;
+        assert.strictEqual(data, compareValue);
+      });
+      comparison.on('error', function(err) {
+        throw new Error('should not emit error');
+      });
+
+      var ended = false;
+      comparison.on('end', function() {
+        assert.strictEqual(ended, false);
+        ended = true;
+        assert.strictEqual(dataCount, 0);
+        done();
+      });
+
+      setImmediate(function() {
+        assert.strictEqual(dataCount, 0);
+        comparison.checkpoint();
+        assert.strictEqual(dataCount, 0);
+
+        setImmediate(function() {
+          assert.strictEqual(ended, false);
+          stream1.end();
+          stream2.end();
+        });
+      });
+    });
+
+    it('can compare before reading', function(done) {
+      var compareCount = 0;
+      var compareValue = false;
+      function compare(state1, state2) {
+        ++compareCount;
+        return compareValue;
+      }
+
+      var stream1 = new stream.PassThrough();
+      var stream2 = new stream.PassThrough();
+      var comparison = new StreamComparison(stream1, stream2, compare);
+
+      var dataCount = 0;
+      comparison.on('data', function(data) {
+        ++dataCount;
+        assert.strictEqual(data, compareValue);
+      });
+      comparison.on('error', function(err) {
+        throw new Error('should not emit error');
+      });
+
+      var testData = new Buffer('test');
+
+      var ended = false;
+      comparison.on('end', function() {
+        assert.strictEqual(ended, false);
+        ended = true;
+        assert.strictEqual(dataCount, 1);
+
+        setImmediate(function() {
+          assert.strictEqual(compareCount, 1);
+          assert.strictEqual(dataCount, 1);
+
+          deepEqual(stream1.read(), testData);
+          deepEqual(stream2.read(), testData);
+
+          done();
+        });
+      });
+
+      assert.strictEqual(dataCount, 0);
+      comparison.checkpoint();
+      assert.strictEqual(dataCount, 1);
+
+      // Test that data written after end is not read by StreamComparison
+      stream1.write(testData);
+      stream2.write(testData);
+    });
+
+    it('does nothing after \'end\'', function(done) {
+      var ended = false;
+      function compare(state1, state2) {
+        assert.strictEqual(ended, false);
+      }
+
+      var stream1 = new stream.PassThrough();
+      var stream2 = new stream.PassThrough();
+      var comparison = new StreamComparison(stream1, stream2, compare);
+      comparison.on('data', function(data) {
+        throw new Error('should not emit data');
+      });
+      comparison.on('error', function(err) {
+        throw new Error('should not emit error');
+      });
+      comparison.on('end', function() {
+        assert.strictEqual(ended, false);
+        ended = true;
+
+        comparison.checkpoint();
+
+        setImmediate(done);
+      });
+
+      stream1.end();
+      stream2.end();
+    });
+
+    it('can take the place of the final comparison', function(done) {
+      var ended = false;
+      var compareValue = false;
+      function compare(state1, state2) {
+        assert.strictEqual(ended, false);
+        return compareValue;
+      }
+
+      var stream1 = new stream.PassThrough();
+      var stream2 = new stream.PassThrough();
+      var comparison = new StreamComparison(stream1, stream2, compare);
+      var dataCount = 0;
+      comparison.on('data', function(data) {
+        assert.strictEqual(data, compareValue);
+        ++dataCount;
+      });
+      comparison.on('error', function(err) {
+        assert.ifError(err || new Error('should not emit error'));
+      });
+      comparison.on('end', function() {
+        assert.strictEqual(ended, false);
+        ended = true;
+        assert.strictEqual(dataCount, 1);
+        setImmediate(done);
+      });
+
+      var endCount = 0;
+      function onEnd() {
+        ++endCount;
+        if (endCount === 2) {
+          comparison.checkpoint();
+        }
+      }
+      stream1.on('end', onEnd);
+      stream2.on('end', onEnd);
+
+      stream1.end();
+      stream2.end();
     });
   });
 });

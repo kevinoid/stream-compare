@@ -14,6 +14,8 @@ var inherits = require('util').inherits;
  * @private
  */
 var CompareType = {
+  /** A full (non-incremental) comparison. */
+  checkpoint: 'checkpoint',
   /** An incremental comparison. */
   incremental: 'incremental',
   /** A full comparison followed by <code>'end'</code>. */
@@ -247,6 +249,17 @@ function StreamComparison(stream1, stream2, optionsOrCompare) {
 
     return false;
   }
+
+  /** Compares the states of the two streams non-incrementally.
+   */
+  this.checkpoint = function checkpoint() {
+    if (isDone) {
+      debug('Ignoring checkpoint() after \'end\'.');
+      return;
+    }
+
+    doCompare(options.compare, CompareType.checkpoint);
+  };
 
   // Note:  Add event listeners before endListeners so end/error is recorded
   Array.prototype.forEach.call(options.events, function(eventName) {

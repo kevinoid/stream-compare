@@ -1387,4 +1387,37 @@ describe('StreamComparison', function() {
       stream2.end();
     });
   });
+
+  // Note:  Testing is lighter since most code paths shared with #checkpoint()
+  describe('#end()', function() {
+    it('does a non-incremental compare and ends on non-result', function(done) {
+      var compareCount = 0;
+      var compareValue = undefined;
+      function compare(state1, state2) {
+        ++compareCount;
+        return compareValue;
+      }
+
+      var stream1 = new stream.PassThrough();
+      var stream2 = new stream.PassThrough();
+      var comparison = new StreamComparison(stream1, stream2, compare);
+
+      comparison.on('data', function(data) {
+        throw new Error('should not emit data');
+      });
+      comparison.on('error', function(err) {
+        assert.ifError(err || new Error('should not emit error'));
+      });
+
+      var ended = false;
+      comparison.on('end', function() {
+        assert.strictEqual(ended, false);
+        ended = true;
+        setImmediate(done);
+      });
+
+      comparison.end();
+      assert.strictEqual(ended, true);
+    });
+  });
 });

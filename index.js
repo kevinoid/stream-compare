@@ -261,6 +261,18 @@ function StreamComparison(stream1, stream2, optionsOrCompare) {
     doCompare(options.compare, CompareType.checkpoint);
   };
 
+  /** Compares the states of the two streams non-incrementally then ends the
+   * comparison whether or not compare produced a result or error.
+   */
+  this.end = function end() {
+    if (isDone) {
+      debug('Ignoring end() after \'end\'.');
+      return;
+    }
+
+    doCompare(options.compare, CompareType.last);
+  };
+
   // Note:  Add event listeners before endListeners so end/error is recorded
   Array.prototype.forEach.call(options.events, function(eventName) {
     if (listeners1[eventName]) {

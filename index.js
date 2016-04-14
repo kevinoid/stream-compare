@@ -9,6 +9,17 @@ var debug = require('debug')('stream-compare');
 var extend = require('extend');
 var inherits = require('util').inherits;
 
+/** Comparison type.
+ * @enum {string}
+ * @private
+ */
+var CompareType = {
+  /** An incremental comparison. */
+  incremental: 'incremental',
+  /** A full comparison followed by <code>'end'</code>. */
+  last: 'last'
+};
+
 /** Defines the available read policies.
  * @enum {string}
  */
@@ -181,7 +192,7 @@ function StreamComparison(stream1, stream2, optionsOrCompare) {
     });
     stream1.removeListener('readable', readNext);
     stream1.removeListener('error', endListener1);
-    stream1.removeListener('error', done);
+    stream1.removeListener('error', onStreamError);
     stream1.removeListener('end', readNextOnEnd);
     stream1.removeListener('end', endListener1);
 
@@ -190,49 +201,42 @@ function StreamComparison(stream1, stream2, optionsOrCompare) {
     });
     stream2.removeListener('readable', readNext);
     stream2.removeListener('error', endListener2);
-    stream2.removeListener('error', done);
+    stream2.removeListener('error', onStreamError);
     stream2.removeListener('end', readNextOnEnd);
     stream2.removeListener('end', endListener2);
 
     clearImmediate(postEndImmediate);
     clearTimeout(postEndTimeout);
 
-    if (err) {
-      debug('Comparison finished with error.');
+    debug('Comparison finished.');
+    self.emit('end');
+  }
+
+  function onStreamError(err) {
+    debug(streamName(this) + ' emitted error', err);
+    self.emit('error', err);
+    done();
+  }
+
+  function doCompare(compareFn, type) {
+    debug('Performing %s compare.', type);
+
+    var hasResultOrError = false;
+    try {
+      var result = compareFn(state1, state2);
+      if (result !== undefined && result !== null) {
+        debug('Comparison produced a result:', result);
+        hasResultOrError = true;
+        self.emit('data', result);
+      }
+    } catch (err) {
+      debug('Comparison produced an error:', err);
+      hasResultOrError = true;
       self.emit('error', err);
-    } else if (result !== undefined) {
-      debug('Comparison finished with a result.');
-      self.emit('data', result);
-    } else {
-      debug('Comparison finished without a result.');
-      self.emit('end');
-    }
-  }
-
-  function doCompare() {
-    debug('Performing final compare.');
-
-    var result, resultErr;
-    try {
-      result = options.compare(state1, state2);
-    } catch (err) {
-      resultErr = err;
-    }
-    done(resultErr, result);
-  }
-
-  function doneIfIncremental() {
-    var result, resultErr, threw;
-    try {
-      result = options.incremental(state1, state2);
-    } catch (err) {
-      threw = true;
-      resultErr = err;
     }
 
-    if ((result !== undefined && result !== null) || threw) {
-      debug('Incremental comparison was conclusive.  Finishing...');
-      done(resultErr, result);
+    if (hasResultOrError || type === CompareType.last) {
+      done();
       return true;
     }
 
@@ -257,7 +261,7 @@ function StreamComparison(stream1, stream2, optionsOrCompare) {
       });
 
       if (options.incremental) {
-        doneIfIncremental();
+        doCompare(options.incremental, CompareType.incremental);
       }
     }
 
@@ -289,20 +293,23 @@ function StreamComparison(stream1, stream2, optionsOrCompare) {
     debug(streamName(this) + ' has ended.');
 
     if (options.incremental) {
-      if (doneIfIncremental()) {
+      if (doCompare(options.incremental, CompareType.incremental)) {
         return;
       }
     }
 
     if (ended === 2) {
+      var postEndCompare = function() {
+        doCompare(options.compare, CompareType.last);
+      };
       if (options.delay) {
         debug('All streams have ended.  Delaying for ' + options.delay +
             'ms before final compare.');
-        postEndTimeout = setTimeout(doCompare, options.delay);
+        postEndTimeout = setTimeout(postEndCompare, options.delay);
       } else {
         // Let pending I/O and callbacks complete to catch some errant events
         debug('All streams have ended.  Delaying before final compare.');
-        postEndImmediate = setImmediate(doCompare);
+        postEndImmediate = setImmediate(postEndCompare);
       }
     }
   }
@@ -318,8 +325,8 @@ function StreamComparison(stream1, stream2, optionsOrCompare) {
   stream2.on('end', endListener2);
 
   if (options.abortOnError) {
-    stream1.once('error', done);
-    stream2.once('error', done);
+    stream1.once('error', onStreamError);
+    stream2.once('error', onStreamError);
   } else {
     stream1.on('error', endListener1);
     stream2.on('error', endListener2);
@@ -384,12 +391,14 @@ function StreamComparison(stream1, stream2, optionsOrCompare) {
     try {
       addData.call(state, data);
     } catch (err) {
-      done(err);
+      debug('Error adding data from ' + streamName(this), err);
+      self.emit('error', err);
+      done();
       return;
     }
 
     if (options.incremental) {
-      doneIfIncremental();
+      doCompare(options.incremental, CompareType.incremental);
     }
   }
 

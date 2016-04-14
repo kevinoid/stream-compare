@@ -182,7 +182,9 @@ function StreamComparison(stream1, stream2, optionsOrCompare) {
   var postEndImmediate;
   var postEndTimeout;
 
-  /** Gets the name of a stream for logging purposes. */
+  /** Gets the name of a stream for logging purposes.
+   * @private
+   */
   function streamName(stream) {
     return stream === stream1 ? 'stream1' :
       stream === stream2 ? 'stream2' :
@@ -308,7 +310,10 @@ function StreamComparison(stream1, stream2, optionsOrCompare) {
     stream2.on(eventName, listeners2[eventName]);
   });
 
-  /** @this {!Readable} */
+  /** Handles stream end events.
+   * @this {!Readable}
+   * @private
+   */
   function endListener(state) {
     // Note:  If incremental is conclusive for 'end' event, this will be called
     // with isDone === true, since removeListener doesn't affect listeners for
@@ -370,6 +375,7 @@ function StreamComparison(stream1, stream2, optionsOrCompare) {
    *
    * @this {!StreamState}
    * @param {*} data Data read from the stream for this StreamState.
+   * @private
    */
   function addData(data) {
     if (options.objectMode) {
@@ -414,7 +420,9 @@ function StreamComparison(stream1, stream2, optionsOrCompare) {
     }
   }
 
-  /** Handles data read from the stream for a given state. */
+  /** Handles data read from the stream for a given state.
+   * @private
+   */
   function handleData(state, data) {
     debug('Read data from ', streamName(this));
 
@@ -432,7 +440,9 @@ function StreamComparison(stream1, stream2, optionsOrCompare) {
     }
   }
 
-  /** Reads from the non-ended stream which has the smallest totalDataLen. */
+  /** Reads from the non-ended stream which has the smallest totalDataLen.
+   * @private
+   */
   function readNext() {
     var stream, state;
 
@@ -465,6 +475,8 @@ function StreamComparison(stream1, stream2, optionsOrCompare) {
    * If 'end' occurs on the stream for which readNext is waiting for
    * 'readable', that event will never occur and it needs to start reading
    * from the other stream.
+   *
+   * @private
    */
   function readNextOnEnd() {
     // Remove pending 'readable' listener.
@@ -499,7 +511,7 @@ function StreamComparison(stream1, stream2, optionsOrCompare) {
 }
 inherits(StreamComparison, EventEmitter);
 
-/** Options for {@link streamCompare}.
+/** Options for {@link streamCompare} and {@link StreamComparison}.
  *
  * @ template CompareResult
  * @typedef {{

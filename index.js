@@ -88,16 +88,21 @@ function StreamState() {
 /** Compares two streams.
  *
  * This class presents a Readable-like interface to simplify consumption of the
- * comparison result.
+ * comparison result.  It emits at most one <code>'data'</code> or
+ * <code>'error'</code> event and exactly one <code>'end'</code> event.
  *
  * Events:
  * <dl>
  * <dt><code>'data'</code></dt>
- * <dd>The comparison result</dd>
+ * <dd>The comparison produced a result.</dd>
  * <dt><code>'end'</code></dt>
- * <dd>The comparison has ended and no differences were found.</dd>
+ * <dd>The comparison is complete, no further events will be emitted.</dd>
  * <dt><code>'error'</code></dt>
- * <dd>A comparison error occurred.  (Note:  Not a stream error.)</dd>
+ * <dd>The comparison produced an error.  Error may be from the
+ * <code>options.compare</code> or <code>options.incremental</code> function,
+ * from the stream (for <code>options.abortOnError</code>), or from an error
+ * in <code>StreamComparison</code> (such as data type mismatch in
+ * non-objectMode).</dd>
  * </dl>
  *
  * @constructor

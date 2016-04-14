@@ -548,13 +548,20 @@ function streamCompare(stream1, stream2, optionsOrCompare, callback) {
     return undefined;
   }
 
+  var didCallback = false;
   comparison.on('data', function(result) {
+    didCallback = true;
     callback(null, result);
   });
   comparison.on('error', function(err) {
+    didCallback = true;
     callback(err);
   });
-  comparison.on('end', callback);
+  comparison.on('end', function() {
+    if (!didCallback) {
+      callback();
+    }
+  });
 
   return undefined;
 }

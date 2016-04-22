@@ -9,6 +9,10 @@ var Promise = require('any-promise');
 var debug = require('debug')('stream-compare');
 var extend = require('extend');
 
+function forEach(arrayLike, callback, thisArg) {
+  return Array.prototype.forEach.call(arrayLike, callback, thisArg);
+}
+
 /** Comparison type.
  * @enum {string}
  * @private
@@ -318,7 +322,7 @@ function streamCompare(stream1, stream2, optionsOrCompare) {
   };
 
   // Note:  Add event listeners before endListeners so end/error is recorded
-  Array.prototype.forEach.call(options.events, function(eventName) {
+  forEach(options.events, function(eventName) {
     if (listeners1[eventName]) {
       return;
     }

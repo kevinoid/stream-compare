@@ -51,6 +51,7 @@ var ReadPolicy = {
 var DEFAULT_OPTIONS = {
   abortOnError: false,
   delay: 0,
+  endEvents: ['end', 'error'],
   // Observe Readable events other than 'data' by default
   events: ['close', 'end', 'error'],
   objectMode: false,
@@ -98,6 +99,7 @@ function StreamState() {
  *   abortOnError: boolean|undefined,
  *   compare: ((function(!StreamState,!StreamState): CompareResult)|undefined),
  *   delay: number|undefined,
+ *   endEvents: Array<string>|undefined,
  *   events: Array<string>|undefined,
  *   incremental:
  *     ((function(!StreamState,!StreamState): CompareResult)|undefined),
@@ -115,6 +117,9 @@ function StreamState() {
  * not specified.
  * @property {number=} delay Additional delay (in ms) after streams end before
  * comparing.  (default: <code>0</code>)
+ * @property {Array<string>=} endEvents Names of events which signal the end of
+ * a stream.  Final compare is performed once both streams have emitted an end
+ * event.  (default: <code>['end', 'error']</code>)
  * @property {Array<string>=} events Names of events to compare.
  * (default: <code>['close', 'end', 'error']</code>)
  * @property {function(!StreamState,!StreamState)=} incremental Incremental
@@ -190,6 +195,11 @@ function streamCompare(stream1, stream2, optionsOrCompare) {
   if (typeof options.compare !== 'function') {
     throw new TypeError('options.compare must be a function');
   }
+  if (!options.endEvents ||
+      typeof options.endEvents !== 'object' ||
+      options.endEvents.length !== options.endEvents.length | 0) {
+    throw new TypeError('options.endEvents must be Array-like');
+  }
   if (!options.events ||
       typeof options.events !== 'object' ||
       options.events.length !== options.events.length | 0) {
@@ -239,19 +249,25 @@ function streamCompare(stream1, stream2, optionsOrCompare) {
       stream1.removeListener(eventName, listeners1[eventName]);
     });
     stream1.removeListener('readable', readNext);
-    stream1.removeListener('error', endListener1);
     stream1.removeListener('error', onStreamError);
     stream1.removeListener('end', readNextOnEnd);
-    stream1.removeListener('end', endListener1);
+    if (options.endEvents) {
+      forEach(options.endEvents, function(eventName) {
+        stream1.removeListener(eventName, endListener1);
+      });
+    }
 
     Object.keys(listeners2).forEach(function(eventName) {
       stream2.removeListener(eventName, listeners2[eventName]);
     });
     stream2.removeListener('readable', readNext);
-    stream2.removeListener('error', endListener2);
     stream2.removeListener('error', onStreamError);
     stream2.removeListener('end', readNextOnEnd);
-    stream2.removeListener('end', endListener2);
+    if (options.endEvents) {
+      forEach(options.endEvents, function(eventName) {
+        stream2.removeListener(eventName, endListener2);
+      });
+    }
 
     clearImmediate(postEndImmediate);
     clearTimeout(postEndTimeout);
@@ -398,19 +414,19 @@ function streamCompare(stream1, stream2, optionsOrCompare) {
   function endListener1() {
     endListener.call(this, state1);
   }
-  stream1.on('end', endListener1);
-
   function endListener2() {
     endListener.call(this, state2);
   }
-  stream2.on('end', endListener2);
+  forEach(options.endEvents, function(eventName) {
+    if (!options.abortOnError || eventName !== 'error') {
+      stream1.on(eventName, endListener1);
+      stream2.on(eventName, endListener2);
+    }
+  });
 
   if (options.abortOnError) {
     stream1.once('error', onStreamError);
     stream2.once('error', onStreamError);
-  } else {
-    stream1.on('error', endListener1);
-    stream2.on('error', endListener2);
   }
 
   /** Adds data to a stream state.

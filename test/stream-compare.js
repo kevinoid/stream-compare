@@ -434,6 +434,82 @@ describe('streamCompare', function() {
     });
   });
 
+  describe('endEvents', function() {
+    it('can end on custom event', function() {
+      var stream1 = new stream.PassThrough();
+      var stream2 = new stream.PassThrough();
+      var options = {
+        compare: deepEqual,
+        endEvents: ['test']
+      };
+      var promise = streamCompare(stream1, stream2, options);
+
+      var ended = false;
+      promise.then(function() {
+        ended = true;
+      });
+
+      stream1.emit('test');
+
+      return new Promise(function(resolve, reject) {
+        setImmediate(function() {
+          assert.strictEqual(ended, false);
+          stream2.emit('test');
+          resolve(promise);
+        });
+      });
+    });
+
+    it('can avoid ending on stream \'end\'', function() {
+      var stream1 = new stream.PassThrough();
+      var stream2 = new stream.PassThrough();
+      var promise = streamCompare(stream1, stream2, deepEqual);
+
+      var ended = false;
+      promise.then(function() {
+        ended = true;
+      });
+
+      stream1.end();
+      stream2.end();
+
+      return new Promise(function(resolve, reject) {
+        setImmediate(function() {
+          assert.strictEqual(ended, false);
+
+          resolve();
+        });
+      });
+    });
+
+    it('abortOnError takes precedence for \'error\' event', function() {
+      function compare(state1, state2) {
+        process.nextTick(function() {
+          throw new Error('compare shouldn\'t be called');
+        });
+      }
+
+      var stream1 = new stream.PassThrough();
+      var stream2 = new stream.PassThrough();
+      var options = {
+        abortOnError: true,
+        compare: compare,
+        endEvents: ['end', 'error']
+      };
+      var errTest = new Error('Test');
+      var promise = streamCompare(stream1, stream2, options).then(
+        neverCalled,
+        function(err) {
+          should.strictEqual(err, errTest);
+        }
+      );
+      // Note:  .emit() rather than .end() to avoid delay
+      stream1.emit('end');
+      stream2.emit('error', errTest);
+      return promise;
+    });
+  });
+
   describe('events', function() {
     it('compares Readable events by default', function() {
       var stream1 = new stream.PassThrough();

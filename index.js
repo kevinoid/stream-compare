@@ -9,10 +9,6 @@ var Promise = require('any-promise');
 var debug = require('debug')('stream-compare');
 var extend = require('extend');
 
-function forEach(arrayLike, callback, thisArg) {
-  return Array.prototype.forEach.call(arrayLike, callback, thisArg);
-}
-
 /** Comparison type.
  * @enum {string}
  * @private
@@ -200,11 +196,13 @@ function streamCompare(stream1, stream2, optionsOrCompare) {
       options.endEvents.length !== options.endEvents.length | 0) {
     throw new TypeError('options.endEvents must be Array-like');
   }
+  options.endEvents = Array.prototype.slice.call(options.endEvents);
   if (!options.events ||
       typeof options.events !== 'object' ||
       options.events.length !== options.events.length | 0) {
     throw new TypeError('options.events must be Array-like');
   }
+  options.events = Array.prototype.slice.call(options.events);
   if (options.incremental && typeof options.incremental !== 'function') {
     throw new TypeError('options.incremental must be a function');
   }
@@ -252,7 +250,7 @@ function streamCompare(stream1, stream2, optionsOrCompare) {
     stream1.removeListener('error', onStreamError);
     stream1.removeListener('end', readNextOnEnd);
     if (options.endEvents) {
-      forEach(options.endEvents, function(eventName) {
+      options.endEvents.forEach(function(eventName) {
         stream1.removeListener(eventName, endListener1);
       });
     }
@@ -264,7 +262,7 @@ function streamCompare(stream1, stream2, optionsOrCompare) {
     stream2.removeListener('error', onStreamError);
     stream2.removeListener('end', readNextOnEnd);
     if (options.endEvents) {
-      forEach(options.endEvents, function(eventName) {
+      options.endEvents.forEach(function(eventName) {
         stream2.removeListener(eventName, endListener2);
       });
     }
@@ -338,7 +336,7 @@ function streamCompare(stream1, stream2, optionsOrCompare) {
   };
 
   // Note:  Add event listeners before endListeners so end/error is recorded
-  forEach(options.events, function(eventName) {
+  options.events.forEach(function(eventName) {
     if (listeners1[eventName]) {
       return;
     }
@@ -417,7 +415,7 @@ function streamCompare(stream1, stream2, optionsOrCompare) {
   function endListener2() {
     endListener.call(this, state2);
   }
-  forEach(options.endEvents, function(eventName) {
+  options.endEvents.forEach(function(eventName) {
     if (!options.abortOnError || eventName !== 'error') {
       stream1.on(eventName, endListener1);
       stream2.on(eventName, endListener2);

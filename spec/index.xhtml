@@ -32,13 +32,13 @@ function compare(state1, state2) {
 }
 var stream1 = new stream.PassThrough();
 var stream2 = new stream.PassThrough();
-streamCompare(stream1, stream2, compare, function(err, value) {
-  should.ifError(err);
-  should.strictEqual(value, compareValue);
-  done();
-});
+var promise = streamCompare(stream1, stream2, compare)
+  .then(function(value) {
+    should.strictEqual(value, compareValue);
+  });
 stream1.end();
-stream2.end();</code></pre></dd>
+stream2.end();
+return promise;</code></pre></dd>
         <dt>propagates the value thrown by compare</dt>
         <dd><pre><code>var compareErr = new Error('compare error');
 function compare(state1, state2) {
@@ -46,12 +46,27 @@ function compare(state1, state2) {
 }
 var stream1 = new stream.PassThrough();
 var stream2 = new stream.PassThrough();
-streamCompare(stream1, stream2, compare, function(err) {
-  should.strictEqual(err, compareErr);
-  done();
-});
+var promise = streamCompare(stream1, stream2, compare).then(
+  neverCalled,
+  function(err) { should.strictEqual(err, compareErr); }
+);
 stream1.end();
-stream2.end();</code></pre></dd>
+stream2.end();
+return promise;</code></pre></dd>
+        <dt>propagates falsey value thrown by compare</dt>
+        <dd><pre><code>var compareErr = false;
+function compare(state1, state2) {
+  throw compareErr;
+}
+var stream1 = new stream.PassThrough();
+var stream2 = new stream.PassThrough();
+var promise = streamCompare(stream1, stream2, compare).then(
+  neverCalled,
+  function(err) { should.strictEqual(err, compareErr); }
+);
+stream1.end();
+stream2.end();
+return promise;</code></pre></dd>
         <dt>passes stream state information to compare</dt>
         <dd><pre><code>var data1 = new Buffer('hello');
 var data2 = new Buffer('there');
@@ -72,13 +87,14 @@ function compare(state1, state2) {
 }
 var stream1 = new stream.PassThrough();
 var stream2 = new stream.PassThrough();
-streamCompare(stream1, stream2, compare, done);
+var promise = streamCompare(stream1, stream2, compare);
 var writeSize = 2;
 stream1.write(data1.slice(0, writeSize));
 stream1.emit('close');
 stream1.end(data1.slice(writeSize));
 stream2.write(data2.slice(0, 0));
-stream2.end(data2);</code></pre></dd>
+stream2.end(data2);
+return promise;</code></pre></dd>
         <dt>treats string stream data as strings</dt>
         <dd><pre><code>var data1 = 'hello';
 var data2 = 'there';
@@ -88,216 +104,236 @@ function compare(state1, state2) {
 }
 var stream1 = new stream.PassThrough({encoding: 'utf8'});
 var stream2 = new stream.PassThrough({encoding: 'utf8'});
-streamCompare(stream1, stream2, compare, done);
+var promise = streamCompare(stream1, stream2, compare);
 var writeSize = 2;
 stream1.write(data1.slice(0, writeSize));
 stream1.end(data1.slice(writeSize));
 stream2.write(data2.slice(0, 0));
-stream2.end(data2);</code></pre></dd>
+stream2.end(data2);
+return promise;</code></pre></dd>
         <dt>compares empty streams as equal</dt>
         <dd><pre><code>var stream1 = new stream.PassThrough();
 var stream2 = new stream.PassThrough();
-streamCompare(stream1, stream2, deepEqual, done);
+var promise = streamCompare(stream1, stream2, deepEqual);
 stream1.end();
-stream2.end();</code></pre></dd>
+stream2.end();
+return promise;</code></pre></dd>
         <dt>compares empty and non-empty streams as not equal</dt>
         <dd><pre><code>var stream1 = new stream.PassThrough();
 var stream2 = new stream.PassThrough();
-streamCompare(stream1, stream2, deepEqual, function(err) {
-  should(err).be.an.instanceof(assert.AssertionError);
-  done();
-});
+var promise = streamCompare(stream1, stream2, deepEqual).then(
+  neverCalled,
+  function(err) { should(err).be.an.instanceof(assert.AssertionError); }
+);
 stream1.end();
-stream2.end('hello');</code></pre></dd>
+stream2.end('hello');
+return promise;</code></pre></dd>
         <dt>compares non-empty and empty streams as not equal</dt>
         <dd><pre><code>var stream1 = new stream.PassThrough();
 var stream2 = new stream.PassThrough();
-streamCompare(stream1, stream2, deepEqual, function(err) {
-  should(err).be.an.instanceof(assert.AssertionError);
-  done();
-});
+var promise = streamCompare(stream1, stream2, deepEqual).then(
+  neverCalled,
+  function(err) { should(err).be.an.instanceof(assert.AssertionError); }
+);
 stream1.end('hello');
-stream2.end();</code></pre></dd>
+stream2.end();
+return promise;</code></pre></dd>
         <dt>compares same-data streams as equal</dt>
         <dd><pre><code>var stream1 = new stream.PassThrough();
 var stream2 = new stream.PassThrough();
-streamCompare(stream1, stream2, deepEqual, done);
+var promise = streamCompare(stream1, stream2, deepEqual);
 stream1.end('hello');
-stream2.end('hello');</code></pre></dd>
+stream2.end('hello');
+return promise;</code></pre></dd>
         <dt>compares different-data streams as not equal</dt>
         <dd><pre><code>var stream1 = new stream.PassThrough();
 var stream2 = new stream.PassThrough();
-streamCompare(stream1, stream2, deepEqual, function(err) {
-  should(err).be.an.instanceof(assert.AssertionError);
-  done();
-});
+var promise = streamCompare(stream1, stream2, deepEqual).then(
+  neverCalled,
+  function(err) { should(err).be.an.instanceof(assert.AssertionError); }
+);
 stream1.end('hello');
-stream2.end('world');</code></pre></dd>
-        <dt>compares same-data same-writes as equal</dt>
-        <dd><pre><code>var stream1 = new stream.PassThrough();
+stream2.end('world');
+return promise;</code></pre></dd>
+        <dt>compares buffered different-data streams as not equal</dt>
+        <dd><pre><code>var compareVal = false;
+function compare(state1, state2) {
+  return compareVal;
+}
+var stream1 = new stream.PassThrough();
 var stream2 = new stream.PassThrough();
-streamCompare(stream1, stream2, deepEqual, done);
+stream1.end('hello');
+stream2.end('world');
+return new Promise(function(resolve, reject) {
+  process.nextTick(resolve);
+}).then(function() {
+  return streamCompare(stream1, stream2, compare);
+}).then(function(result) {
+  should.strictEqual(result, compareVal);
+});</code></pre></dd>
+        <dt>compares same-data same-writes as equal</dt>
+        <dd><pre><code>// Note:  objectMode to prevent write-combining
+var stream1 = new stream.PassThrough({objectMode: true});
+var stream2 = new stream.PassThrough({objectMode: true});
+var promise = streamCompare(stream1, stream2, deepEqual);
 stream1.write('hello');
 stream1.end(' world');
 stream2.write('hello');
-stream2.end(' world');</code></pre></dd>
+stream2.end(' world');
+return promise;</code></pre></dd>
         <dt>compares same-data different-writes as equal</dt>
         <dd><pre><code>var stream1 = new stream.PassThrough();
 var stream2 = new stream.PassThrough();
-streamCompare(stream1, stream2, deepEqual, done);
+var promise = streamCompare(stream1, stream2, deepEqual);
 stream1.end('hello world');
 stream2.write('hello');
-stream2.end(' world');</code></pre></dd>
+stream2.end(' world');
+return promise;</code></pre></dd>
+        <dt>compares different-writes to objectMode streams equal</dt>
+        <dd><pre><code>var stream1 = new stream.PassThrough({objectMode: true});
+var stream2 = new stream.PassThrough({objectMode: true});
+var promise = streamCompare(stream1, stream2, deepEqual);
+stream1.end('hello world');
+stream2.write('hello');
+stream2.end(' world');
+return promise;</code></pre></dd>
         <dt>compares different-writes as non-equal in objectMode</dt>
-        <dd><pre><code>var stream1 = new stream.PassThrough();
-var stream2 = new stream.PassThrough();
+        <dd><pre><code>var stream1 = new stream.PassThrough({objectMode: true});
+var stream2 = new stream.PassThrough({objectMode: true});
 var options = {
   compare: deepEqual,
   objectMode: true
 };
-streamCompare(stream1, stream2, options, function(err) {
-  should(err).be.an.instanceof(assert.AssertionError);
-  done();
-});
+var promise = streamCompare(stream1, stream2, options).then(
+  neverCalled,
+  function(err) { should(err).be.an.instanceof(assert.AssertionError); }
+);
 stream1.end('hello world');
 stream2.write('hello');
-stream2.end(' world');</code></pre></dd>
+stream2.end(' world');
+return promise;</code></pre></dd>
         <section class="suite">
           <h1>argument checking</h1>
           <dl>
-            <dt>throws for invalid callback</dt>
-            <dd><pre><code>should.throws(function() {
-  streamCompare(stream1, stream2, deepEqual, true);
-}, /\bcallback\b/);</code></pre></dd>
-            <dt>for invalid stream1</dt>
-            <dd><pre><code>streamCompare(true, stream2, deepEqual, function(err) {
-  should(err).be.an.instanceof(TypeError)
-    .and.match({message: /\bstream1\b/});
-  done();
-});</code></pre></dd>
-            <dt>for invalid stream2</dt>
-            <dd><pre><code>streamCompare(stream1, true, deepEqual, function(err) {
-  should(err).be.an.instanceof(TypeError)
-    .and.match({message: /\bstream2\b/});
-  done();
-});</code></pre></dd>
-            <dt>for no .read() method and readPolicy 'least'</dt>
-            <dd><pre><code>streamCompare(stream1, new EventEmitter(), deepEqual, function(err) {
-  should(err).be.an.instanceof(TypeError)
-    .and.match({message: /\bread\b/})
-    .and.match({message: /\bleast\b/});
-  done();
-});</code></pre></dd>
-            <dt>for missing optionsOrCompare</dt>
-            <dd><pre><code>streamCompare(stream1, stream2, null, function(err) {
-  should(err).be.an.instanceof(TypeError)
-    .and.match({message: /\boptions\.compare\b/});
-  done();
-});</code></pre></dd>
-            <dt>for invalid optionsOrCompare</dt>
-            <dd><pre><code>streamCompare(stream1, stream2, true, function(err) {
-  should(err).be.an.instanceof(TypeError)
-    .and.match({message: /\boptions\.compare\b|\boptionsOrCompare\b/});
-  done();
-});</code></pre></dd>
-            <dt>for invalid options.readPolicy</dt>
-            <dd><pre><code>var options = {
-  compare: deepEqual,
-  readPolicy: 'invalid'
-};
-streamCompare(stream1, stream2, options, function(err) {
-  should(err).be.an.instanceof(RangeError)
-    .and.match({message: /\boptions\.readPolicy\b/});
-  done();
-});</code></pre></dd>
-            <dt>for invalid options.events</dt>
-            <dd><pre><code>var options = {
-  compare: deepEqual
-};
-options[optionName] = true;  // None accepts true as valid
-streamCompare(stream1, stream2, options, function(err) {
-  should(err).be.an.instanceof(TypeError)
-    .and.match({
-      message: new RegExp('\\boptions\\.' + optionName + '\\b')
-    });
-  done();
-});</code></pre></dd>
-            <dt>for invalid options.incremental</dt>
-            <dd><pre><code>var options = {
-  compare: deepEqual
-};
-options[optionName] = true;  // None accepts true as valid
-streamCompare(stream1, stream2, options, function(err) {
-  should(err).be.an.instanceof(TypeError)
-    .and.match({
-      message: new RegExp('\\boptions\\.' + optionName + '\\b')
-    });
-  done();
-});</code></pre></dd>
-            <dt>for invalid options.readPolicy</dt>
-            <dd><pre><code>var options = {
-  compare: deepEqual
-};
-options[optionName] = true;  // None accepts true as valid
-streamCompare(stream1, stream2, options, function(err) {
-  should(err).be.an.instanceof(TypeError)
-    .and.match({
-      message: new RegExp('\\boptions\\.' + optionName + '\\b')
-    });
-  done();
-});</code></pre></dd>
-          </dl>
-        </section>
-        <section class="suite">
-          <h1>without global.Promise</h1>
-          <dl>
-            <dt>throws without a callback</dt>
-            <dd><pre><code>var stream1 = new stream.PassThrough();
-var stream2 = new stream.PassThrough();
-should.throws(
-  function() { streamCompare(stream1, stream2, deepEqual); },
+            <dt>throws for invalid stream1</dt>
+            <dd><pre><code>should.throws(
+  function() {
+    streamCompare(true, stream2, deepEqual);
+  },
   function(err) {
-    return err instanceof TypeError &amp;&amp; /\bcallback\b/.test(err.message);
+    return err instanceof TypeError &amp;&amp;
+      /\bstream1\b/.test(err.message);
   }
 );</code></pre></dd>
-          </dl>
-        </section>
-        <section class="suite">
-          <h1>with global.Promise</h1>
-          <dl>
-            <dt>returns a Promise when called without a callback</dt>
-            <dd><pre><code>var stream1 = new stream.PassThrough();
-var stream2 = new stream.PassThrough();
-var result = streamCompare(stream1, stream2, deepEqual);
-should(result).be.an.instanceof(global.Promise);</code></pre></dd>
-            <dt>resolves to value returned by compare</dt>
-            <dd><pre><code>var compareValue = {};
-function compare(state1, state2) {
-  return compareValue;
-}
-var stream1 = new stream.PassThrough();
-var stream2 = new stream.PassThrough();
-var promise = streamCompare(stream1, stream2, compare)
-  .then(function(result) {
-    should.strictEqual(result, compareValue);
-  });
-stream1.end();
-stream2.end();
-return promise;</code></pre></dd>
-            <dt>rejects with value thrown by compare</dt>
-            <dd><pre><code>var compareErr = new Error('test compare error');
-function compare(state1, state2) {
-  throw compareErr;
-}
-var stream1 = new stream.PassThrough();
-var stream2 = new stream.PassThrough();
-var promise = streamCompare(stream1, stream2, compare).then(
-  function() { throw Error('Should not be called!'); },
-  function(err) { should.strictEqual(err, compareErr); }
-);
-stream1.end();
-stream2.end();
-return promise;</code></pre></dd>
+            <dt>throws for invalid stream2</dt>
+            <dd><pre><code>should.throws(
+  function() {
+    streamCompare(stream1, true, deepEqual);
+  },
+  function(err) {
+    return err instanceof TypeError &amp;&amp;
+      /\bstream2\b/.test(err.message);
+  }
+);</code></pre></dd>
+            <dt>throws for no .read() method and readPolicy 'least'</dt>
+            <dd><pre><code>should.throws(
+  function() { streamCompare(stream1, new EventEmitter(), deepEqual); },
+  function(err) {
+    return err instanceof TypeError &amp;&amp;
+      /\bread\b/.test(err.message) &amp;&amp;
+      /\bleast\b/.test(err.message);
+  }
+);</code></pre></dd>
+            <dt>throws for missing optionsOrCompare</dt>
+            <dd><pre><code>should.throws(
+  function() { streamCompare(stream1, stream2, null); },
+  function(err) {
+    return err instanceof TypeError &amp;&amp;
+      /\boptions\.compare\b/.test(err.message);
+  }
+);</code></pre></dd>
+            <dt>throws for invalid optionsOrCompare</dt>
+            <dd><pre><code>should.throws(
+  function() { streamCompare(stream1, stream2, true); },
+  function(err) {
+    return err instanceof TypeError &amp;&amp;
+      /\boptions\.compare\b|\boptionsOrCompare\b/.test(err.message);
+  }
+);</code></pre></dd>
+            <dt>throws for invalid options.readPolicy</dt>
+            <dd><pre><code>should.throws(
+  function() {
+    var options = {
+      compare: deepEqual,
+      readPolicy: 'invalid'
+    };
+    streamCompare(stream1, stream2, options);
+  },
+  function(err) {
+    return err instanceof RangeError &amp;&amp;
+      /\boptions\.readPolicy\b/.test(err.message);
+  }
+);</code></pre></dd>
+            <dt>for invalid options.endEvents</dt>
+            <dd><pre><code>should.throws(
+  function() {
+    var options = {
+      compare: deepEqual
+    };
+    options[optionName] = true;  // None accepts true as valid
+    streamCompare(stream1, stream2, options);
+  },
+  function(err) {
+    var optionRE = new RegExp('\\boptions\\.' + optionName + '\\b');
+    return err instanceof TypeError &amp;&amp;
+      optionRE.test(err.message);
+  }
+);</code></pre></dd>
+            <dt>for invalid options.events</dt>
+            <dd><pre><code>should.throws(
+  function() {
+    var options = {
+      compare: deepEqual
+    };
+    options[optionName] = true;  // None accepts true as valid
+    streamCompare(stream1, stream2, options);
+  },
+  function(err) {
+    var optionRE = new RegExp('\\boptions\\.' + optionName + '\\b');
+    return err instanceof TypeError &amp;&amp;
+      optionRE.test(err.message);
+  }
+);</code></pre></dd>
+            <dt>for invalid options.incremental</dt>
+            <dd><pre><code>should.throws(
+  function() {
+    var options = {
+      compare: deepEqual
+    };
+    options[optionName] = true;  // None accepts true as valid
+    streamCompare(stream1, stream2, options);
+  },
+  function(err) {
+    var optionRE = new RegExp('\\boptions\\.' + optionName + '\\b');
+    return err instanceof TypeError &amp;&amp;
+      optionRE.test(err.message);
+  }
+);</code></pre></dd>
+            <dt>for invalid options.readPolicy</dt>
+            <dd><pre><code>should.throws(
+  function() {
+    var options = {
+      compare: deepEqual
+    };
+    options[optionName] = true;  // None accepts true as valid
+    streamCompare(stream1, stream2, options);
+  },
+  function(err) {
+    var optionRE = new RegExp('\\boptions\\.' + optionName + '\\b');
+    return err instanceof TypeError &amp;&amp;
+      optionRE.test(err.message);
+  }
+);</code></pre></dd>
           </dl>
         </section>
         <section class="suite">
@@ -306,9 +342,10 @@ return promise;</code></pre></dd>
             <dt>compares error events by default</dt>
             <dd><pre><code>var stream1 = new stream.PassThrough();
 var stream2 = new stream.PassThrough();
-streamCompare(stream1, stream2, deepEqual, done);
+var promise = streamCompare(stream1, stream2, deepEqual);
 stream1.emit('error', new Error('Test'));
-stream2.emit('error', new Error('Test'));</code></pre></dd>
+stream2.emit('error', new Error('Test'));
+return promise;</code></pre></dd>
             <dt>can abort on error events</dt>
             <dd><pre><code>var stream1 = new stream.PassThrough();
 var stream2 = new stream.PassThrough();
@@ -317,17 +354,24 @@ var options = {
   compare: deepEqual
 };
 var errTest = new Error('Test');
-streamCompare(stream1, stream2, options, function(err) {
-  should.strictEqual(err, errTest);
-  done();
-});
-stream1.emit('error', errTest);</code></pre></dd>
+var promise = streamCompare(stream1, stream2, options).then(
+  neverCalled,
+  function(err) {
+    should.strictEqual(err, errTest);
+  }
+);
+stream1.emit('error', errTest);
+return promise;</code></pre></dd>
             <dt>doesn't call incremental or compare on abort</dt>
             <dd><pre><code>function compare(state1, state2) {
-  done(new Error('compare shouldn\'t be called'));
+  process.nextTick(function() {
+    throw new Error('compare shouldn\'t be called');
+  });
 }
 function incremental(state1, state2) {
-  done(new Error('incremental shouldn\'t be called'));
+  process.nextTick(function() {
+    throw new Error('incremental shouldn\'t be called');
+  });
 }
 var stream1 = new stream.PassThrough();
 var stream2 = new stream.PassThrough();
@@ -337,11 +381,14 @@ var options = {
   incremental: incremental
 };
 var errTest = new Error('Test');
-streamCompare(stream1, stream2, options, function(err) {
-  should.strictEqual(err, errTest);
-  done();
-});
-stream1.emit('error', errTest);</code></pre></dd>
+var promise = streamCompare(stream1, stream2, options).then(
+  neverCalled,
+  function(err) {
+    should.strictEqual(err, errTest);
+  }
+);
+stream1.emit('error', errTest);
+return promise;</code></pre></dd>
           </dl>
         </section>
         <section class="suite">
@@ -356,15 +403,81 @@ var options = {
   compare: deepEqual,
   delay: eventDelay + 1
 };
-streamCompare(stream1, stream2, options, function(err) {
-  should(err).be.an.instanceof(assert.AssertionError);
-  done();
-});
+var promise = streamCompare(stream1, stream2, options).then(
+  neverCalled,
+  function(err) { should(err).be.an.instanceof(assert.AssertionError); }
+);
 stream1.end();
 stream2.end();
 setTimeout(function() {
   stream1.emit('end');
-}, eventDelay);</code></pre></dd>
+}, eventDelay);
+return promise;</code></pre></dd>
+          </dl>
+        </section>
+        <section class="suite">
+          <h1>endEvents</h1>
+          <dl>
+            <dt>can end on custom event</dt>
+            <dd><pre><code>var stream1 = new stream.PassThrough();
+var stream2 = new stream.PassThrough();
+var options = {
+  compare: deepEqual,
+  endEvents: ['test']
+};
+var promise = streamCompare(stream1, stream2, options);
+var ended = false;
+promise.then(function() {
+  ended = true;
+});
+stream1.emit('test');
+return new Promise(function(resolve, reject) {
+  setImmediate(function() {
+    assert.strictEqual(ended, false);
+    stream2.emit('test');
+    resolve(promise);
+  });
+});</code></pre></dd>
+            <dt>can avoid ending on stream 'end'</dt>
+            <dd><pre><code>var stream1 = new stream.PassThrough();
+var stream2 = new stream.PassThrough();
+var promise = streamCompare(stream1, stream2, deepEqual);
+var ended = false;
+promise.then(function() {
+  ended = true;
+});
+stream1.end();
+stream2.end();
+return new Promise(function(resolve, reject) {
+  setImmediate(function() {
+    assert.strictEqual(ended, false);
+    resolve();
+  });
+});</code></pre></dd>
+            <dt>abortOnError takes precedence for 'error' event</dt>
+            <dd><pre><code>function compare(state1, state2) {
+  process.nextTick(function() {
+    throw new Error('compare shouldn\'t be called');
+  });
+}
+var stream1 = new stream.PassThrough();
+var stream2 = new stream.PassThrough();
+var options = {
+  abortOnError: true,
+  compare: compare,
+  endEvents: ['end', 'error']
+};
+var errTest = new Error('Test');
+var promise = streamCompare(stream1, stream2, options).then(
+  neverCalled,
+  function(err) {
+    should.strictEqual(err, errTest);
+  }
+);
+// Note:  .emit() rather than .end() to avoid delay
+stream1.emit('end');
+stream2.emit('error', errTest);
+return promise;</code></pre></dd>
           </dl>
         </section>
         <section class="suite">
@@ -373,11 +486,12 @@ setTimeout(function() {
             <dt>compares Readable events by default</dt>
             <dd><pre><code>var stream1 = new stream.PassThrough();
 var stream2 = new stream.PassThrough();
-streamCompare(stream1, stream2, deepEqual, done);
+var promise = streamCompare(stream1, stream2, deepEqual);
 stream1.emit('close');
 stream1.end();
 stream2.emit('close');
-stream2.end();</code></pre></dd>
+stream2.end();
+return promise;</code></pre></dd>
             <dt>can ignore all events</dt>
             <dd><pre><code>function compare(state1, state2) {
   should.deepEqual(state1.events, []);
@@ -389,20 +503,22 @@ var options = {
   compare: compare,
   events: []
 };
-streamCompare(stream1, stream2, options, done);
+var promise = streamCompare(stream1, stream2, options);
 stream1.emit('close');
 stream1.emit('error');
 stream1.end();
 stream2.emit('close');
 stream2.emit('error');
-stream2.end();</code></pre></dd>
+stream2.end();
+return promise;</code></pre></dd>
             <dt>ignores non-Readable events by default</dt>
             <dd><pre><code>var stream1 = new stream.PassThrough();
 var stream2 = new stream.PassThrough();
-streamCompare(stream1, stream2, deepEqual, done);
+var promise = streamCompare(stream1, stream2, deepEqual);
 stream1.end();
 stream1.emit('finish');
-stream2.end();</code></pre></dd>
+stream2.end();
+return promise;</code></pre></dd>
             <dt>can compare custom events</dt>
             <dd><pre><code>var eventValue = {};
 function compare(state1, state2) {
@@ -417,10 +533,11 @@ var options = {
   compare: compare,
   events: ['test']
 };
-streamCompare(stream1, stream2, options, done);
+var promise = streamCompare(stream1, stream2, options);
 stream1.emit('test', eventValue);
 stream1.end();
-stream2.end();</code></pre></dd>
+stream2.end();
+return promise;</code></pre></dd>
             <dt>ignores multiple occurrances of event name</dt>
             <dd><pre><code>var eventValue = {};
 function compare(state1, state2) {
@@ -435,52 +552,66 @@ var options = {
   compare: compare,
   events: ['test', 'test']
 };
-streamCompare(stream1, stream2, options, done);
+var promise = streamCompare(stream1, stream2, options);
 stream1.emit('test', eventValue);
 stream1.end();
-stream2.end();</code></pre></dd>
+stream2.end();
+return promise;</code></pre></dd>
             <dt>compares different Readable events as different</dt>
             <dd><pre><code>var stream1 = new stream.PassThrough();
 var stream2 = new stream.PassThrough();
-streamCompare(stream1, stream2, deepEqual, function(err) {
-  should(err).be.an.instanceof(assert.AssertionError);
-  done();
-});
+var promise = streamCompare(stream1, stream2, deepEqual).then(
+  neverCalled,
+  function(err) { should(err).be.an.instanceof(assert.AssertionError); }
+);
 stream1.emit('close');
 stream1.end();
-stream2.end();</code></pre></dd>
+stream2.end();
+return promise;</code></pre></dd>
             <dt>compares different event counts as different</dt>
             <dd><pre><code>var stream1 = new stream.PassThrough();
 var stream2 = new stream.PassThrough();
-streamCompare(stream1, stream2, deepEqual, function(err) {
-  should(err).be.an.instanceof(assert.AssertionError);
-  done();
-});
+var promise = streamCompare(stream1, stream2, deepEqual).then(
+  neverCalled,
+  function(err) { should(err).be.an.instanceof(assert.AssertionError); }
+);
 stream1.emit('close');
 stream1.emit('close');
 stream1.end();
 stream2.emit('close');
-stream2.end();</code></pre></dd>
+stream2.end();
+return promise;</code></pre></dd>
             <dt>compares multiple non-overlapping end events</dt>
             <dd><pre><code>var stream1 = new stream.PassThrough();
 var stream2 = new stream.PassThrough();
-streamCompare(stream1, stream2, deepEqual, function(err) {
-  should(err).be.an.instanceof(assert.AssertionError);
-  done();
-});
-stream1.end();
+var promise = streamCompare(stream1, stream2, deepEqual).then(
+  neverCalled,
+  function(err) { should(err).be.an.instanceof(assert.AssertionError); }
+);
+// streamCompare may read from either stream first and the 'end' event
+// does not fire until read() is called after EOF, so we emit directly
+// for first stream.  Then streamCompare must read from the second.
 stream1.emit('end');
-stream2.end();</code></pre></dd>
+process.nextTick(function() {
+  stream1.emit('end');
+  stream2.end();
+});
+return promise;</code></pre></dd>
             <dt>compares immediate overlapping end events</dt>
             <dd><pre><code>var stream1 = new stream.PassThrough();
 var stream2 = new stream.PassThrough();
-streamCompare(stream1, stream2, deepEqual, function(err) {
-  should(err).be.an.instanceof(assert.AssertionError);
-  done();
-});
+var promise = streamCompare(stream1, stream2, deepEqual).then(
+  neverCalled,
+  function(err) { should(err).be.an.instanceof(assert.AssertionError); }
+);
 stream1.end();
 stream2.end();
-stream1.emit('end');</code></pre></dd>
+stream2.once('end', function() {
+  process.nextTick(function() {
+    stream1.emit('end');
+  });
+});
+return promise;</code></pre></dd>
           </dl>
         </section>
         <section class="suite">
@@ -496,12 +627,13 @@ var options = {
   compare: deepEqual,
   incremental: incremental
 };
-streamCompare(stream1, stream2, options, function(err) {
-  should(err).be.an.instanceof(assert.AssertionError);
-  done();
-});
+var promise = streamCompare(stream1, stream2, options).then(
+  neverCalled,
+  function(err) { should(err).be.an.instanceof(assert.AssertionError); }
+);
 stream1.end('hello');
-stream2.end('world');</code></pre></dd>
+stream2.end('world');
+return promise;</code></pre></dd>
             <dt>avoids compare if a non-null value is returned</dt>
             <dd><pre><code>var incrementalValue = false;
 function compare(state1, state2) {
@@ -516,13 +648,13 @@ var options = {
   compare: compare,
   incremental: incremental
 };
-streamCompare(stream1, stream2, options, function(err, value) {
-  should.ifError(err);
-  should.strictEqual(value, incrementalValue);
-  done();
-});
+var promise = streamCompare(stream1, stream2, options)
+  .then(function(value) {
+    should.strictEqual(value, incrementalValue);
+  });
 stream1.end('hello');
-stream2.end('hello');</code></pre></dd>
+stream2.end('hello');
+return promise;</code></pre></dd>
             <dt>avoids compare if a value is thrown</dt>
             <dd><pre><code>var incrementalErr = new Error('incremental error');
 function compare(state1, state2) {
@@ -537,12 +669,13 @@ var options = {
   compare: compare,
   incremental: incremental
 };
-streamCompare(stream1, stream2, options, function(err) {
-  should.strictEqual(err, incrementalErr);
-  done();
-});
+var promise = streamCompare(stream1, stream2, options).then(
+  neverCalled,
+  function(err) { should.strictEqual(err, incrementalErr); }
+);
 stream1.end('hello');
-stream2.end('hello');</code></pre></dd>
+stream2.end('hello');
+return promise;</code></pre></dd>
             <dt>causes early return if a value is thrown</dt>
             <dd><pre><code>var incrementalErr = new Error('incremental error');
 function compare(state1, state2) {
@@ -557,13 +690,14 @@ var options = {
   compare: compare,
   incremental: incremental
 };
-streamCompare(stream1, stream2, options, function(err) {
-  should.strictEqual(err, incrementalErr);
-  done();
-});
+var promise = streamCompare(stream1, stream2, options).then(
+  neverCalled,
+  function(err) { should.strictEqual(err, incrementalErr); }
+);
 stream1.end('hello');
 // stream2 writes more than stream1 but does not end.
-stream2.write('hello2');</code></pre></dd>
+stream2.write('hello2');
+return promise;</code></pre></dd>
             <dt>is used in place of compare, if not specified</dt>
             <dd><pre><code>var incrementalValue = false;
 function incremental(state1, state2) {
@@ -574,13 +708,13 @@ var stream2 = new stream.PassThrough();
 var options = {
   incremental: incremental
 };
-streamCompare(stream1, stream2, options, function(err, value) {
-  should.ifError(err);
-  should.strictEqual(value, incrementalValue);
-  done();
-});
+var promise = streamCompare(stream1, stream2, options)
+  .then(function(value) {
+    should.strictEqual(value, incrementalValue);
+  });
 stream1.end('hello');
-stream2.end('world');</code></pre></dd>
+stream2.end('world');
+return promise;</code></pre></dd>
             <dt>calls done once when conclusive on end</dt>
             <dd><pre><code>function compare(state1, state2) {
   throw new Error('compare shouldn\'t be called');
@@ -595,13 +729,13 @@ var options = {
   compare: compare,
   incremental: incremental
 };
-streamCompare(stream1, stream2, options, function(err, value) {
-  should.ifError(err);
-  should.strictEqual(value, incrementalValue);
-  done();
-});
+var promise = streamCompare(stream1, stream2, options)
+  .then(function(value) {
+    should.strictEqual(value, incrementalValue);
+  });
 stream1.end();
-stream2.end();</code></pre></dd>
+stream2.end();
+return promise;</code></pre></dd>
           </dl>
         </section>
         <section class="suite">
@@ -611,23 +745,25 @@ stream2.end();</code></pre></dd>
             <dd><pre><code>// Streams are in objectMode, streamCompare is not
 var stream1 = new stream.PassThrough({objectMode: true});
 var stream2 = new stream.PassThrough({objectMode: true});
-streamCompare(stream1, stream2, deepEqual, function(err) {
-  should(err).be.an.instanceof(TypeError);
-  done();
-});
+var promise = streamCompare(stream1, stream2, deepEqual).then(
+  neverCalled,
+  function(err) { should(err).be.an.instanceof(TypeError); }
+);
 stream1.write('hello');
 stream1.end(new Buffer(' world'));
-stream2.end();</code></pre></dd>
+stream2.end();
+return promise;</code></pre></dd>
             <dt>errors on object reads not in objectMode</dt>
             <dd><pre><code>// Streams are in objectMode, streamCompare is not
 var stream1 = new stream.PassThrough({objectMode: true});
 var stream2 = new stream.PassThrough({objectMode: true});
-streamCompare(stream1, stream2, deepEqual, function(err) {
-  should(err).be.an.instanceof(TypeError);
-  done();
-});
+var promise = streamCompare(stream1, stream2, deepEqual).then(
+  neverCalled,
+  function(err) { should(err).be.an.instanceof(TypeError); }
+);
 stream1.end({test: true});
-stream2.end();</code></pre></dd>
+stream2.end();
+return promise;</code></pre></dd>
             <dt>supports object reads in objectMode</dt>
             <dd><pre><code>var stream1 = new stream.PassThrough({objectMode: true});
 var stream2 = new stream.PassThrough({objectMode: true});
@@ -635,9 +771,10 @@ var options = {
   compare: deepEqual,
   objectMode: true
 };
-streamCompare(stream1, stream2, options, done);
+var promise = streamCompare(stream1, stream2, options);
 stream1.end({test: true});
-stream2.end({test: true});</code></pre></dd>
+stream2.end({test: true});
+return promise;</code></pre></dd>
           </dl>
         </section>
         <section class="suite">
@@ -656,10 +793,8 @@ var options = {
   readPolicy: 'flowing',
   incremental: incremental
 };
-streamCompare(stream1, stream1, options, function(err) {
-  should.ifError(err);
+var promise = streamCompare(stream1, stream1, options).then(function() {
   isDone = true;
-  done();
 });
 stream1.pause();
 stream1.write('hello');
@@ -673,15 +808,17 @@ setImmediate(function() {
   stream2.resume();
   stream1.end();
   stream2.end();
-});</code></pre></dd>
+});
+return promise;</code></pre></dd>
             <dt>compares the same stream as equal when 'flowing'</dt>
             <dd><pre><code>var stream1 = new stream.PassThrough();
 var options = {
   compare: deepEqual,
   readPolicy: 'flowing'
 };
-streamCompare(stream1, stream1, options, done);
-stream1.end('hello');</code></pre></dd>
+var promise = streamCompare(stream1, stream1, options);
+stream1.end('hello');
+return promise;</code></pre></dd>
             <dt>handles empty-Buffer 'read' events</dt>
             <dd><pre><code>var data1 = new Buffer('hello world');
 var data2 = [new Buffer('hello'), new Buffer(0), new Buffer(' world')];
@@ -706,12 +843,13 @@ var options = {
   events: ['data'],
   readPolicy: 'flowing'
 };
-streamCompare(stream1, stream2, options, done);
+var promise = streamCompare(stream1, stream2, options);
 stream1.end(data1);
 stream2.write(data2[0]);
 // stream.PassThrough suppresses empty writes.  Emit it ourselves.
 stream2.emit('data', data2[1]);
-stream2.end(data2[2]);</code></pre></dd>
+stream2.end(data2[2]);
+return promise;</code></pre></dd>
             <dt>handles empty-string 'read' events</dt>
             <dd><pre><code>var data1 = 'hello world';
 var data2 = ['hello', '', ' world'];
@@ -736,12 +874,13 @@ var options = {
   events: ['data'],
   readPolicy: 'flowing'
 };
-streamCompare(stream1, stream2, options, done);
+var promise = streamCompare(stream1, stream2, options);
 stream1.end(data1);
 stream2.write(data2[0]);
 // stream.PassThrough suppresses empty writes.  Emit it ourselves.
 stream2.emit('data', data2[1]);
-stream2.end(data2[2]);</code></pre></dd>
+stream2.end(data2[2]);
+return promise;</code></pre></dd>
             <dt>doesn't read any data when 'none'</dt>
             <dd><pre><code>function compare(state1, state2) {
   should.not.exist(state1.data);
@@ -753,12 +892,13 @@ var options = {
   compare: compare,
   readPolicy: 'none'
 };
-streamCompare(stream1, stream2, options, done);
+var promise = streamCompare(stream1, stream2, options);
 // Since there are no 'data' listeners, must .resume() to get 'end'
 stream1.resume();
 stream2.resume();
 stream1.end('hello');
-stream2.end('world');</code></pre></dd>
+stream2.end('world');
+return promise;</code></pre></dd>
             <dt>can treat data as events only</dt>
             <dd><pre><code>var data1 = new Buffer('hello');
 var data2 = new Buffer('world');
@@ -783,12 +923,13 @@ var options = {
   events: ['close', 'data', 'end', 'error'],
   readPolicy: 'none'
 };
-streamCompare(stream1, stream2, options, done);
+var promise = streamCompare(stream1, stream2, options);
 stream1.emit('close');
 stream1.end(data1);
 stream2.write(data2);
 stream2.emit('close');
-stream2.end();</code></pre></dd>
+stream2.end();
+return promise;</code></pre></dd>
           </dl>
         </section>
         <section class="suite">
@@ -812,21 +953,22 @@ function compareData(incData1, incData2) {
 function compare(state1, state2) {
   throw new Error('compare shouldn\'t be called');
 }
-var stream1 = new stream.PassThrough();
-var stream2 = new stream.PassThrough();
+// Note:  objectMode to prevent write-combining
+var stream1 = new stream.PassThrough({objectMode: true});
+var stream2 = new stream.PassThrough({objectMode: true});
 var options = {
   compare: compare,
   incremental: streamCompare.makeIncremental(compareData)
 };
-streamCompare(stream1, stream2, options, function(err, value) {
-  should.ifError(err);
-  should.strictEqual(value, compareValue);
-  done();
-});
+var promise = streamCompare(stream1, stream2, options)
+  .then(function(value) {
+    should.strictEqual(value, compareValue);
+  });
 stream1.write(data1[0]);
 stream2.write(data2[0]);
 stream1.end(data1[1]);
-stream2.end(data2[1]);</code></pre></dd>
+stream2.end(data2[1]);
+return promise;</code></pre></dd>
             <dt>makes incremental from an event comparison function</dt>
             <dd><pre><code>var compareValue = false;
 function compareEvents(incEvents1, incEvents2) {
@@ -849,46 +991,54 @@ var options = {
   compare: compare,
   incremental: streamCompare.makeIncremental(null, compareEvents)
 };
-streamCompare(stream1, stream2, options, function(err, value) {
-  should.ifError(err);
-  should.strictEqual(value, compareValue);
-  done();
-});
+var promise = streamCompare(stream1, stream2, options)
+  .then(function(value) {
+    should.strictEqual(value, compareValue);
+  });
 stream1.emit('close');
 stream1.end();
-stream2.end();</code></pre></dd>
+stream2.end();
+return promise;</code></pre></dd>
             <dt>removes inconclusive data before compare</dt>
             <dd><pre><code>function compare(state1, state2) {
   should.strictEqual(state1.data.length, 0);
   should.strictEqual(state2.data.length, 0);
 }
-var stream1 = new stream.PassThrough();
-var stream2 = new stream.PassThrough();
+// Note:  objectMode to prevent write-combining
+var stream1 = new stream.PassThrough({objectMode: true});
+var stream2 = new stream.PassThrough({objectMode: true});
 var options = {
   compare: compare,
   incremental: streamCompare.makeIncremental(deepEqual)
 };
-streamCompare(stream1, stream2, options, done);
+var promise = streamCompare(stream1, stream2, options);
 stream1.write('hello');
 stream1.end(' world');
 stream2.write('hello');
-stream2.end(' world');</code></pre></dd>
+stream2.end(' world');
+return promise;</code></pre></dd>
             <dt>removes inconclusive string data before compare</dt>
             <dd><pre><code>function compare(state1, state2) {
   should.strictEqual(state1.data.length, 0);
   should.strictEqual(state2.data.length, 0);
 }
-var stream1 = new stream.PassThrough({encoding: 'utf8'});
-var stream2 = new stream.PassThrough({encoding: 'utf8'});
+var streamOptions = {
+  encoding: 'utf8',
+  // Note:  objectMode to prevent write-combining
+  objectMode: true
+};
+var stream1 = new stream.PassThrough(streamOptions);
+var stream2 = new stream.PassThrough(streamOptions);
 var options = {
   compare: compare,
   incremental: streamCompare.makeIncremental(deepEqual)
 };
-streamCompare(stream1, stream2, options, done);
+var promise = streamCompare(stream1, stream2, options);
 stream1.write('hello');
 stream1.end(' world');
 stream2.write('hello');
-stream2.end(' world');</code></pre></dd>
+stream2.end(' world');
+return promise;</code></pre></dd>
             <dt>removes inconclusive events before compare</dt>
             <dd><pre><code>function compare(state1, state2) {
   should.strictEqual(state1.events.length, 0);
@@ -900,22 +1050,22 @@ var options = {
   compare: compare,
   incremental: streamCompare.makeIncremental(deepEqual, deepEqual)
 };
-streamCompare(stream1, stream2, options, done);
+var promise = streamCompare(stream1, stream2, options);
 stream1.emit('close');
 stream1.end();
 stream2.emit('close');
-stream2.end();</code></pre></dd>
+stream2.end();
+return promise;</code></pre></dd>
             <dt>doesn't return early due to incompleteness</dt>
-            <dd><pre><code>var stream1 = new stream.PassThrough();
-var stream2 = new stream.PassThrough();
+            <dd><pre><code>// Note:  objectMode to prevent write-combining
+var stream1 = new stream.PassThrough({objectMode: true});
+var stream2 = new stream.PassThrough({objectMode: true});
 var options = {
   incremental: streamCompare.makeIncremental(deepEqual)
 };
 var isDone = false;
-streamCompare(stream1, stream2, options, function(err) {
+var promise = streamCompare(stream1, stream2, options).then(function() {
   isDone = true;
-  should.ifError(err);
-  done();
 });
 stream1.write('he');
 stream2.write('hel');
@@ -924,45 +1074,235 @@ stream2.write('l');
 setImmediate(function() {
   should.strictEqual(isDone, false);
   stream2.end('o');
-});</code></pre></dd>
+});
+return promise;</code></pre></dd>
             <dt>returns early if streams differ before ending</dt>
             <dd><pre><code>var stream1 = new stream.PassThrough();
 var stream2 = new stream.PassThrough();
 var options = {
   incremental: streamCompare.makeIncremental(deepEqual)
 };
-streamCompare(stream1, stream2, options, function(err) {
-  should(err).be.an.instanceof(assert.AssertionError);
-  done();
-});
+var promise = streamCompare(stream1, stream2, options).then(
+  neverCalled,
+  function(err) { should(err).be.an.instanceof(assert.AssertionError); }
+);
 stream1.write('hello');
-stream2.write('hella');</code></pre></dd>
+stream2.write('hella');
+return promise;</code></pre></dd>
             <dt>returns early if stream ends early</dt>
             <dd><pre><code>var stream1 = new stream.PassThrough();
 var stream2 = new stream.PassThrough();
 var options = {
   incremental: streamCompare.makeIncremental(deepEqual)
 };
-streamCompare(stream1, stream2, options, function(err) {
-  should(err).be.an.instanceof(assert.AssertionError);
-  done();
-});
+var promise = streamCompare(stream1, stream2, options).then(
+  neverCalled,
+  function(err) { should(err).be.an.instanceof(assert.AssertionError); }
+);
 // stream1 writes more data than stream2 but doesn't end
 stream1.write('hello');
-stream2.end('hell');</code></pre></dd>
+stream2.end('hell');
+return promise;</code></pre></dd>
             <dt>returns early if stream ends empty</dt>
             <dd><pre><code>var stream1 = new stream.PassThrough();
 var stream2 = new stream.PassThrough();
 var options = {
   incremental: streamCompare.makeIncremental(deepEqual)
 };
-streamCompare(stream1, stream2, options, function(err) {
-  should(err).be.an.instanceof(assert.AssertionError);
-  done();
-});
+var promise = streamCompare(stream1, stream2, options).then(
+  neverCalled,
+  function(err) { should(err).be.an.instanceof(assert.AssertionError); }
+);
 // stream1 writes more data than stream2 but doesn't end
 stream1.write('hello');
-stream2.end();</code></pre></dd>
+stream2.end();
+return promise;</code></pre></dd>
+            <dt>compares buffered different-data streams as not equal</dt>
+            <dd><pre><code>var incrementalVal = false;
+var stream1 = new stream.PassThrough();
+var stream2 = new stream.PassThrough();
+stream1.end('hello');
+stream2.end('world');
+return new Promise(function(resolve, reject) {
+  process.nextTick(resolve);
+}).then(function() {
+  var options = {
+    compare: function compare(state1, state2) {
+      throw new Error('compare shouldn\'t be called');
+    },
+    incremental: function incremental(state1, state2) {
+      return incrementalVal;
+    }
+  };
+  return streamCompare(stream1, stream2, options);
+}).then(function(result) {
+  should.strictEqual(result, incrementalVal);
+});</code></pre></dd>
+          </dl>
+        </section>
+      </dl>
+    </section>
+    <section class="suite">
+      <h1>Promise</h1>
+      <dl>
+        <section class="suite">
+          <h1>#checkpoint()</h1>
+          <dl>
+            <dt>does a non-incremental comparison and resolves on result</dt>
+            <dd><pre><code>var compareCalled = false;
+var compareValue = false;
+function compare(state1, state2) {
+  if (compareCalled) {
+    process.nextTick(function() {
+      throw new Error('compare called multiple times');
+    });
+  }
+  compareCalled = true;
+  return compareValue;
+}
+var stream1 = new stream.PassThrough();
+var stream2 = new stream.PassThrough();
+var promise = streamCompare(stream1, stream2, compare);
+setImmediate(function() {
+  assert.strictEqual(compareCalled, false);
+  promise.checkpoint();
+  assert.strictEqual(compareCalled, true);
+});
+return promise.then(function(value) {
+  assert.strictEqual(value, compareValue);
+  stream1.end();
+  stream2.end();
+  // Delay to ensure compare is not called
+  return new Promise(function(resolve, reject) {
+    setImmediate(resolve);
+  });
+});</code></pre></dd>
+            <dt>does not resolve for compare non-result</dt>
+            <dd><pre><code>var compareValue = undefined;
+function compare(state1, state2) {
+  return compareValue;
+}
+var stream1 = new stream.PassThrough();
+var stream2 = new stream.PassThrough();
+var promise = streamCompare(stream1, stream2, compare);
+var ended = false;
+promise.then(function() {
+  ended = true;
+});
+return new Promise(function(resolve, reject) {
+  setImmediate(function() {
+    assert.strictEqual(ended, false);
+    promise.checkpoint();
+    setImmediate(function() {
+      assert.strictEqual(ended, false);
+      stream1.end();
+      stream2.end();
+      resolve(promise);
+    });
+  });
+});</code></pre></dd>
+            <dt>can compare before reading</dt>
+            <dd><pre><code>var compareCount = 0;
+var compareValue = false;
+function compare(state1, state2) {
+  ++compareCount;
+  return compareValue;
+}
+var stream1 = new stream.PassThrough();
+var stream2 = new stream.PassThrough();
+var promise = streamCompare(stream1, stream2, compare);
+var testData = new Buffer('test');
+promise.checkpoint();
+// Test that data written after end is not read by StreamComparison
+stream1.write(testData);
+stream2.write(testData);
+return promise.then(function(value) {
+  assert.strictEqual(value, compareValue);
+  return new Promise(function(resolve, reject) {
+    setImmediate(function() {
+      assert.strictEqual(compareCount, 1);
+      deepEqual(stream1.read(), testData);
+      deepEqual(stream2.read(), testData);
+      resolve();
+    });
+  });
+});</code></pre></dd>
+            <dt>does not compare after resolving</dt>
+            <dd><pre><code>var ended = false;
+function compare(state1, state2) {
+  assert.strictEqual(ended, false);
+}
+var stream1 = new stream.PassThrough();
+var stream2 = new stream.PassThrough();
+var promise = streamCompare(stream1, stream2, compare);
+stream1.end();
+stream2.end();
+return promise.then(function(value) {
+  ended = true;
+  promise.checkpoint();
+});</code></pre></dd>
+            <dt>can take the place of the final compare</dt>
+            <dd><pre><code>var ended = false;
+var compareValue = false;
+function compare(state1, state2) {
+  if (ended) {
+    process.nextTick(function() {
+      throw new Error('compare called after end');
+    });
+  }
+  return compareValue;
+}
+var stream1 = new stream.PassThrough();
+var stream2 = new stream.PassThrough();
+var promise = streamCompare(stream1, stream2, compare);
+var endCount = 0;
+function onEnd() {
+  ++endCount;
+  if (endCount === 2) {
+    promise.checkpoint();
+  }
+}
+stream1.on('end', onEnd);
+stream2.on('end', onEnd);
+stream1.end();
+stream2.end();
+return promise.then(function(value) {
+  assert.strictEqual(value, compareValue);
+  ended = true;
+  // Delay to ensure compare is not called
+  return new Promise(function(resolve, reject) {
+    setImmediate(resolve);
+  });
+});</code></pre></dd>
+          </dl>
+        </section>
+        <section class="suite">
+          <h1>#end()</h1>
+          <dl>
+            <dt>does a non-incremental compare and ends on non-result</dt>
+            <dd><pre><code>var compareValue = undefined;
+function compare(state1, state2) {
+  return compareValue;
+}
+var stream1 = new stream.PassThrough();
+var stream2 = new stream.PassThrough();
+var promise = streamCompare(stream1, stream2, compare);
+promise.end();
+return promise;</code></pre></dd>
+            <dt>does not compare after resolving</dt>
+            <dd><pre><code>var ended = false;
+function compare(state1, state2) {
+  assert.strictEqual(ended, false);
+}
+var stream1 = new stream.PassThrough();
+var stream2 = new stream.PassThrough();
+var promise = streamCompare(stream1, stream2, compare);
+stream1.end();
+stream2.end();
+return promise.then(function(value) {
+  ended = true;
+  promise.end();
+});</code></pre></dd>
           </dl>
         </section>
       </dl>

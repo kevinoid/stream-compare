@@ -33,79 +33,240 @@
 'use strict';
 
 var EventEmitter = require('events').EventEmitter;
+var Promise = require('any-promise');
 var debug = require('debug')('stream-compare');
 var extend = require('extend');
+
+/** Comparison type.
+ * @enum {string}
+ * @private
+ */
+var CompareType = {
+  /** A full (non-incremental) comparison. */
+  checkpoint: 'checkpoint',
+  /** An incremental comparison. */
+  incremental: 'incremental',
+  /** A full comparison followed by &lt;code>'end'&lt;/code>. */
+  last: 'last'
+};
 
 /** Defines the available read policies.
  * @enum {string}
  */
 var ReadPolicy = {
+  /** Reads are done concurrently using &lt;code>'data'&lt;/code> events. */
   flowing: 'flowing',
+  /** Reads from the stream which has output the least data, measured in
+   * bytes/chars for non-&lt;code>objectMode&lt;/code> or values for
+   * &lt;code>objectMode&lt;/code>. */
   least: 'least',
+  /** No reads are done.  When using this readPolicy, be sure to either add
+   * &lt;code>'data'&lt;/code> to events, add other &lt;code>'data'&lt;/code> listeners,
+   * &lt;code>.read()&lt;/code> the data elsewhere, or call &lt;code>.resume()&lt;/code> on
+   * the streams so that the data will be read and &lt;code>'end'&lt;/code> can be
+   * reached. */
   none: 'none'
 };
 
 /** Default option values.
  * @const
+ * @private
  */
 var DEFAULT_OPTIONS = {
   abortOnError: false,
   delay: 0,
+  endEvents: ['end', 'error'],
   // Observe Readable events other than 'data' by default
   events: ['close', 'end', 'error'],
   objectMode: false,
-  // Can be ''flowing', least', or 'none'
-  // @type {!ReadPolicy}
+  /** @type {!ReadPolicy} */
   readPolicy: 'least'
 };
 
 /** Caller-visible stream state for comparison.
  *
  * Guarantees/Invariants:
- *  - Equivalent states are assert.deepStrictEqual.
- *  - States can be round-tripped to JSON at any point.
- *  - States are owned by the caller, so any additional properties (which are
- *    permitted to violate the above guarantees) are preserved and the same
- *    state object is always returned.
  *
- * As a result, objects of this class have no methods and do not contain any
+ * &lt;ul>
+ * &lt;li>Equivalent states are {@link assert.deepStrictEqual}.&lt;/li>
+ * &lt;li>States can be round-tripped to JSON at any point.&lt;/li>
+ * &lt;li>States are owned by the caller, so any additional properties (which are
+ *   permitted to violate the above guarantees) are preserved and the same
+ *   state object is always returned.&lt;/li>
+ * &lt;/ul>
+ *
+ * &lt;p>As a result, objects of this class have no methods and do not contain any
  * non-state information (e.g. the stream itself or the comparison options)
- * and their prototype is never used.
+ * and their prototype is never used.&lt;/p>
  *
  * @constructor
  */
 function StreamState() {
-  /** Has the stream emitted 'end' or 'error'. */
+  /** Has the stream emitted &lt;code>'end'&lt;/code> or &lt;code>'error'&lt;/code>. */
   this.ended = false;
   /** Events emitted by the stream.
    * @type !Array.&lt;!{name: string, args: !Array}> */
   this.events = [];
-  /** Data returned/emitted by the stream (as an Array if in objectMode).
+  /** Data returned/emitted by the stream (as an &lt;code>Array&lt;/code> if in
+   * &lt;code>objectMode&lt;/code>).
    * @type Array|Buffer|string */
   this.data = undefined;
-  /** Count of total objects read in objectMode, bytes/chars read otherwise. */
+  /** Count of total objects read in &lt;code>objectMode&lt;/code>, bytes/chars read
+   * otherwise. */
   this.totalDataLen = 0;
 }
 
-/** Same as streamCompare, but assumes its arguments are valid.
- * @private
+/** Options for {@link streamCompare}.
+ *
+ * @ template CompareResult
+ * @typedef {{
+ *   abortOnError: boolean|undefined,
+ *   compare: ((function(!StreamState,!StreamState): CompareResult)|undefined),
+ *   delay: number|undefined,
+ *   endEvents: Array&lt;string>|undefined,
+ *   events: Array&lt;string>|undefined,
+ *   incremental:
+ *     ((function(!StreamState,!StreamState): CompareResult)|undefined),
+ *   objectMode: boolean|undefined,
+ *   readPolicy: ReadPolicy|undefined
+ * }} StreamCompareOptions
+ * @property {boolean=} abortOnError Abort comparison and return error emitted
+ * by either stream.  (default: &lt;code>false&lt;/code>)
+ * @property {function(!StreamState,!StreamState)=} compare Comparison function
+ * which will be called with a StreamState object for each stream, after both
+ * streams have ended.  The value returned by this function will resolve the
+ * returned promise and be passed to the callback as its second argument.  A
+ * value thrown by this function will reject the promise and be passed to the
+ * callback as its first argument.  This function is required if incremental is
+ * not specified.
+ * @property {number=} delay Additional delay (in ms) after streams end before
+ * comparing.  (default: &lt;code>0&lt;/code>)
+ * @property {Array&lt;string>=} endEvents Names of events which signal the end of
+ * a stream.  Final compare is performed once both streams have emitted an end
+ * event.  (default: &lt;code>['end', 'error']&lt;/code>)
+ * @property {Array&lt;string>=} events Names of events to compare.
+ * (default: &lt;code>['close', 'end', 'error']&lt;/code>)
+ * @property {function(!StreamState,!StreamState)=} incremental Incremental
+ * comparison function which will be called periodically with a StreamState
+ * object for each stream.  This function may modify the StreamState objects to
+ * remove data not required for later comparisons (e.g. common output) and may
+ * perform the comparison before the streams have ended (e.g. due to early
+ * differences).  Any non-null, non-undefined value returned by this function
+ * will finish the comparison, resolve the returned promise, and be passed to
+ * the callback as its second argument. A value thrown by this function will
+ * finish the comparison, reject the promise and be passed to the callback as
+ * its first argument.  If compare is not specified, this function will also be
+ * called for the final comparison.
+ * @property {boolean=} objectMode Collect values read into an Array.  This
+ * allows comparison of read values without concatenation and comparison of
+ * non-string/Buffer types.
+ * @property {ReadPolicy=} readPolicy Scheduling discipline for reads from th
+ * streams.  (default: &lt;code>'least'&lt;/code>)
  */
-function streamCompareInternal(stream1, stream2, options, callback) {
+// var StreamCompareOptions;
+
+/** Promise returned by {@link streamCompare}.
+ *
+ * @ template CompareResult
+ * @constructor
+ * @name StreamComparePromise
+ * @extends Promise&lt;CompareResult>
+ */
+// var StreamComparePromise;
+
+/** Compares the output of two Readable streams.
+ *
+ * @ template CompareResult
+ * @param {!stream.Readable} stream1 First stream to compare.
+ * @param {!stream.Readable} stream2 Second stream to compare.
+ * @param {!StreamCompareOptions&lt;CompareResult>|
+ * function(!StreamState,!StreamState): CompareResult}
+ * optionsOrCompare Options, or a comparison function (as described in
+ * {@link options.compare}).
+ * @return {StreamComparePromise&lt;CompareResult>} A &lt;code>Promise&lt;/code> with
+ * the comparison result or error.
+ */
+function streamCompare(stream1, stream2, optionsOrCompare) {
+  var options;
+  if (optionsOrCompare) {
+    if (typeof optionsOrCompare === 'function') {
+      options = {compare: optionsOrCompare};
+    } else if (typeof optionsOrCompare === 'object') {
+      options = optionsOrCompare;
+    } else {
+      throw new TypeError('optionsOrCompare must be an object or function');
+    }
+  }
+
+  options = extend({}, DEFAULT_OPTIONS, options);
+  if (!options.compare) {
+    options.compare = options.incremental;
+  }
+
+  // Can change this to duck typing if there are non-EventEmitter streams
+  if (!(stream1 instanceof EventEmitter)) {
+    throw new TypeError('stream1 must be an EventEmitter');
+  }
+  // Can change this to duck typing if there are non-EventEmitter streams
+  if (!(stream2 instanceof EventEmitter)) {
+    throw new TypeError('stream2 must be an EventEmitter');
+  }
+  if (options.readPolicy === 'least' &amp;&amp;
+      (typeof stream1.read !== 'function' ||
+       typeof stream2.read !== 'function')) {
+    throw new TypeError('streams must have .read() for readPolicy \'least\'');
+  }
+  if (typeof options.compare !== 'function') {
+    throw new TypeError('options.compare must be a function');
+  }
+  if (!options.endEvents ||
+      typeof options.endEvents !== 'object' ||
+      options.endEvents.length !== options.endEvents.length | 0) {
+    throw new TypeError('options.endEvents must be Array-like');
+  }
+  options.endEvents = Array.prototype.slice.call(options.endEvents);
+  if (!options.events ||
+      typeof options.events !== 'object' ||
+      options.events.length !== options.events.length | 0) {
+    throw new TypeError('options.events must be Array-like');
+  }
+  options.events = Array.prototype.slice.call(options.events);
+  if (options.incremental &amp;&amp; typeof options.incremental !== 'function') {
+    throw new TypeError('options.incremental must be a function');
+  }
+  if (typeof options.readPolicy !== 'string') {
+    throw new TypeError('options.readPolicy must be a string');
+  }
+  if (!ReadPolicy.hasOwnProperty(options.readPolicy)) {
+    throw new RangeError('Invalid options.readPolicy \'' +
+        options.readPolicy + '\'');
+  }
+
+  var reject;
+  var resolve;
+  var promise = new Promise(function(resolveArg, rejectArg) {
+    resolve = resolveArg;
+    reject = rejectArg;
+  });
   var state1 = new StreamState();
   var state2 = new StreamState();
   var ended = 0;
   var isDone = false;
   var listeners1 = {};
   var listeners2 = {};
-  var endListener1;
-  var endListener2;
+  var postEndImmediate;
+  var postEndTimeout;
 
-  /** Gets the name of a stream for logging purposes. */
+  /** Gets the name of a stream for logging purposes.
+   * @private
+   */
   function streamName(stream) {
-    return stream === stream1 ? 'stream1' : 'stream2';
+    return stream === stream1 ? 'stream1' :
+      stream === stream2 ? 'stream2' :
+      'unknown stream';
   }
 
-  function done() {
+  function done(err, result) {
     isDone = true;
 
     debug('Unregistering stream event listeners...');
@@ -114,56 +275,92 @@ function streamCompareInternal(stream1, stream2, options, callback) {
       stream1.removeListener(eventName, listeners1[eventName]);
     });
     stream1.removeListener('readable', readNext);
-    stream1.removeListener('error', endListener1);
-    stream1.removeListener('error', done);
+    stream1.removeListener('error', onStreamError);
     stream1.removeListener('end', readNextOnEnd);
-    stream1.removeListener('end', endListener1);
+    options.endEvents.forEach(function(eventName) {
+      stream1.removeListener(eventName, endListener1);
+    });
 
     Object.keys(listeners2).forEach(function(eventName) {
       stream2.removeListener(eventName, listeners2[eventName]);
     });
     stream2.removeListener('readable', readNext);
-    stream2.removeListener('error', endListener2);
-    stream2.removeListener('error', done);
+    stream2.removeListener('error', onStreamError);
     stream2.removeListener('end', readNextOnEnd);
-    stream2.removeListener('end', endListener2);
+    options.endEvents.forEach(function(eventName) {
+      stream2.removeListener(eventName, endListener2);
+    });
 
-    debug('All done.  Calling callback...');
-    return callback.apply(this, arguments);
+    clearImmediate(postEndImmediate);
+    clearTimeout(postEndTimeout);
+
+    debug('Comparison finished.');
   }
 
-  function doCompare() {
-    debug('Performing final compare.');
-
-    var result, resultErr;
-    try {
-      result = options.compare(state1, state2);
-    } catch (err) {
-      resultErr = err;
-    }
-    done(resultErr, result);
+  function onStreamError(err) {
+    debug(streamName(this) + ' emitted error', err);
+    reject(err);
+    done();
   }
 
-  function doneIfIncremental() {
-    var result, resultErr, threw;
+  function doCompare(compareFn, type) {
+    debug('Performing %s compare.', type);
+
+    var hasResultOrError = false;
     try {
-      result = options.incremental(state1, state2);
+      var result = compareFn(state1, state2);
+      if (result !== undefined &amp;&amp; result !== null) {
+        debug('Comparison produced a result:', result);
+        hasResultOrError = true;
+        resolve(result);
+      }
     } catch (err) {
-      threw = true;
-      resultErr = err;
+      debug('Comparison produced an error:', err);
+      hasResultOrError = true;
+      reject(err);
     }
 
-    if ((result !== undefined &amp;&amp; result !== null) || threw) {
-      debug('Incremental comparison was conclusive.  Finishing...');
-      done(resultErr, result);
+    if (hasResultOrError) {
+      done();
+      return true;
+    } else if (type === CompareType.last) {
+      resolve();
+      done();
       return true;
     }
 
     return false;
   }
 
+  /** Compares the states of the two streams non-incrementally.
+   * @function
+   * @name StreamComparePromise#checkpoint
+   */
+  promise.checkpoint = function checkpoint() {
+    if (isDone) {
+      debug('Ignoring checkpoint() after settling.');
+      return;
+    }
+
+    doCompare(options.compare, CompareType.checkpoint);
+  };
+
+  /** Compares the states of the two streams non-incrementally then ends the
+   * comparison whether or not compare produced a result or error.
+   * @function
+   * @name StreamComparePromise#end
+   */
+  promise.end = function end() {
+    if (isDone) {
+      debug('Ignoring end() after settling.');
+      return;
+    }
+
+    doCompare(options.compare, CompareType.last);
+  };
+
   // Note:  Add event listeners before endListeners so end/error is recorded
-  Array.prototype.forEach.call(options.events, function(eventName) {
+  options.events.forEach(function(eventName) {
     if (listeners1[eventName]) {
       return;
     }
@@ -173,71 +370,85 @@ function streamCompareInternal(stream1, stream2, options, callback) {
       return;
     }
 
-    function listener() {
-      debug('\'' + eventName + '\' event from ' + streamName(this) + '.');
-
+    function listener(/* event args */) {
       this.events.push({
         name: eventName,
         args: Array.prototype.slice.call(arguments)
       });
 
       if (options.incremental) {
-        doneIfIncremental();
+        doCompare(options.incremental, CompareType.incremental);
       }
     }
 
-    listeners1[eventName] = listener.bind(state1);
+    listeners1[eventName] = function listener1() {
+      debug('\'' + eventName + '\' event from stream1.');
+      listener.apply(state1, arguments);
+    };
     stream1.on(eventName, listeners1[eventName]);
 
-    listeners2[eventName] = listener.bind(state2);
+    listeners2[eventName] = function listener2() {
+      debug('\'' + eventName + '\' event from stream2.');
+      listener.apply(state2, arguments);
+    };
     stream2.on(eventName, listeners2[eventName]);
   });
 
-  /** @this {!StreamState} */
-  function endListener() {
+  /** Handles stream end events.
+   * @this {!Readable}
+   * @private
+   */
+  function endListener(state) {
     // Note:  If incremental is conclusive for 'end' event, this will be called
     // with isDone === true, since removeListener doesn't affect listeners for
     // an event which is already in-progress.
-    if (this.ended || isDone) {
+    if (state.ended || isDone) {
       return;
     }
 
-    this.ended = true;
+    state.ended = true;
     ++ended;
 
     debug(streamName(this) + ' has ended.');
 
     if (options.incremental) {
-      if (doneIfIncremental()) {
+      if (doCompare(options.incremental, CompareType.incremental)) {
         return;
       }
     }
 
     if (ended === 2) {
+      var postEndCompare = function() {
+        doCompare(options.compare, CompareType.last);
+      };
       if (options.delay) {
         debug('All streams have ended.  Delaying for ' + options.delay +
             'ms before final compare.');
-        setTimeout(doCompare, options.delay);
+        postEndTimeout = setTimeout(postEndCompare, options.delay);
       } else {
         // Let pending I/O and callbacks complete to catch some errant events
         debug('All streams have ended.  Delaying before final compare.');
-        setImmediate(doCompare);
+        postEndImmediate = setImmediate(postEndCompare);
       }
     }
   }
 
-  endListener1 = endListener.bind(state1);
-  stream1.on('end', endListener1);
-
-  endListener2 = endListener.bind(state2);
-  stream2.on('end', endListener2);
+  function endListener1() {
+    endListener.call(this, state1);
+  }
+  function endListener2() {
+    endListener.call(this, state2);
+  }
+  options.endEvents.forEach(function(eventName) {
+    if (!options.abortOnError || eventName !== 'error') {
+      stream1.on(eventName, endListener1);
+      stream2.on(eventName, endListener2);
+    }
+  });
 
   if (options.abortOnError) {
-    stream1.once('error', done);
-    stream2.once('error', done);
-  } else {
-    stream1.on('error', endListener1);
-    stream2.on('error', endListener2);
+    stream1.once('error', onStreamError);
+    stream2.once('error', onStreamError);
   }
 
   /** Adds data to a stream state.
@@ -248,6 +459,7 @@ function streamCompareInternal(stream1, stream2, options, callback) {
    *
    * @this {!StreamState}
    * @param {*} data Data read from the stream for this StreamState.
+   * @private
    */
   function addData(data) {
     if (options.objectMode) {
@@ -292,21 +504,29 @@ function streamCompareInternal(stream1, stream2, options, callback) {
     }
   }
 
-  /** Handles data read from the stream for a given state. */
+  /** Handles data read from the stream for a given state.
+   * @private
+   */
   function handleData(state, data) {
+    debug('Read data from ', streamName(this));
+
     try {
       addData.call(state, data);
     } catch (err) {
-      done(err);
+      debug('Error adding data from ' + streamName(this), err);
+      reject(err);
+      done();
       return;
     }
 
     if (options.incremental) {
-      doneIfIncremental();
+      doCompare(options.incremental, CompareType.incremental);
     }
   }
 
-  /** Reads from the non-ended stream which has the smallest totalDataLen. */
+  /** Reads from the non-ended stream which has the smallest totalDataLen.
+   * @private
+   */
   function readNext() {
     var stream, state;
 
@@ -330,7 +550,7 @@ function streamCompareInternal(stream1, stream2, options, callback) {
         return;
       }
 
-      handleData(state, data);
+      handleData.call(stream, state, data);
     }
   }
 
@@ -339,6 +559,8 @@ function streamCompareInternal(stream1, stream2, options, callback) {
    * If 'end' occurs on the stream for which readNext is waiting for
    * 'readable', that event will never occur and it needs to start reading
    * from the other stream.
+   *
+   * @private
    */
   function readNextOnEnd() {
     // Remove pending 'readable' listener.
@@ -355,147 +577,23 @@ function streamCompareInternal(stream1, stream2, options, callback) {
   switch (options.readPolicy) {
     case 'flowing':
       debug('Will read from streams in flowing mode.');
-      stream1.on('data', handleData.bind(null, state1));
-      stream2.on('data', handleData.bind(null, state2));
+      stream1.on('data', handleData.bind(stream1, state1));
+      stream2.on('data', handleData.bind(stream2, state2));
       break;
 
     case 'least':
       debug('Will read from stream with least output.');
       stream1.once('end', readNextOnEnd);
       stream2.once('end', readNextOnEnd);
-      readNext();
+      process.nextTick(readNext);
       break;
 
     default:
       debug('Not reading from streams.');
       break;
   }
-}
 
-/** Compares the output of two Readable streams.
- *
- * Options:
- * - abortOnError: Abort comparison and return error emitted by either stream.
- *   (default: false)
- * - compare: Comparison function which will be called with a StreamState
- *   object for each stream, after both streams have ended.  The value
- *   returned by this function will resolve the returned promise and be passed
- *   to the callback as its second argument.  A value thrown by this function
- *   will reject the promise and be passed to the callback as its first
- *   argument.
- *   This function is required if incremental is not specified.
- * - delay: Additional delay (in ms) after streams end before comparing.
- *   (default: 0)
- * - events: Names of events to compare.  (default: ['close', 'end', 'error'])
- * - incremental: Incremental comparison function which will be called
- *   periodically with a StreamState object for each stream.  This function
- *   may modify the StreamState objects to remove data not required for later
- *   comparisons (e.g. common output) and may perform the comparison before
- *   the streams have ended (e.g. due to early differences).  Any non-null,
- *   non-undefined value returned by this function will finish the comparison,
- *   resolve the returned promise, and be passed to the callback as its second
- *   argument. A value thrown by this function will finish the comparison,
- *   reject the promise and be passed to the callback as its first argument.
- *   If compare is not specified, this function will also be called for the
- *   final comparison.
- * - objectMode: Collect values read into an Array.  This allows comparison
- *   of read values without concatenation and comparison of non-string/Buffer
- *   types.
- * - readPolicy: Scheduling discipline for reads from the streams.
- *   - 'flowing': Reads are done concurrently using 'data' events.
- *   - 'least': Reads from the stream which has output the least data, measured
- *     in bytes/chars for non-objectMode or values for objectMode.
- *   - 'none': No reads are done.  When using this readPolicy, be sure to
- *     either add 'data' to events, add other 'data' listeners, .read() the
- *     data elsewhere, or call .resume() on the streams so that the data will
- *     be read and 'end' can be reached.
- *   (default: 'least')
- *
- * @param {!stream.Readable} stream1 First stream to compare.
- * @param {!stream.Readable} stream2 Second stream to compare.
- * @param {!Object|function(!StreamState,!StreamState)} optionsOrCompare
- * Options, or a comparison function (as described in options.compare).
- * @param {?function(Error, Object=)=} callback Callback with comparison result
- * or error.
- * @return {Promise|undefined} If &lt;code>callback&lt;/code> is not given and
- * &lt;code>global.Promise&lt;/code> is defined, a &lt;code>Promise&lt;/code> with the
- * comparison result or error.
- */
-function streamCompare(stream1, stream2, optionsOrCompare, callback) {
-  if (!callback &amp;&amp; typeof Promise === 'function') {
-    // eslint-disable-next-line no-undef
-    return new Promise(function(resolve, reject) {
-      streamCompare(stream1, stream2, optionsOrCompare, function(err, result) {
-        if (err) { reject(err); } else { resolve(result); }
-      });
-    });
-  }
-
-  if (typeof callback !== 'function') {
-    throw new TypeError('callback must be a function');
-  }
-
-  // From this point on errors are returned using callback.  As long as callers
-  // pass a callback or have global.Promise, this function will never throw and
-  // callers don't need to wrap in a try/catch.
-
-  var options;
-  try {
-    if (optionsOrCompare) {
-      if (typeof optionsOrCompare === 'function') {
-        options = {compare: optionsOrCompare};
-      } else if (typeof optionsOrCompare === 'object') {
-        options = optionsOrCompare;
-      } else {
-        throw new TypeError('optionsOrCompare must be an object or function');
-      }
-    }
-
-    options = extend({}, DEFAULT_OPTIONS, options);
-    if (!options.compare) {
-      options.compare = options.incremental;
-    }
-
-    // Can change this to duck typing if there are non-EventEmitter streams
-    if (!(stream1 instanceof EventEmitter)) {
-      throw new TypeError('stream1 must be an EventEmitter');
-    }
-    // Can change this to duck typing if there are non-EventEmitter streams
-    if (!(stream2 instanceof EventEmitter)) {
-      throw new TypeError('stream2 must be an EventEmitter');
-    }
-    if (options.readPolicy === 'least' &amp;&amp;
-        (typeof stream1.read !== 'function' ||
-         typeof stream2.read !== 'function')) {
-      throw new TypeError('streams must have .read() for readPolicy \'least\'');
-    }
-    if (typeof options.compare !== 'function') {
-      throw new TypeError('options.compare must be a function');
-    }
-    if (!options.events ||
-        typeof options.events !== 'object' ||
-        options.events.length !== options.events.length | 0) {
-      throw new TypeError('options.events must be Array-like');
-    }
-    if (options.incremental &amp;&amp; typeof options.incremental !== 'function') {
-      throw new TypeError('options.incremental must be a function');
-    }
-    if (typeof options.readPolicy !== 'string') {
-      throw new TypeError('options.readPolicy must be a string');
-    }
-    if (!ReadPolicy.hasOwnProperty(options.readPolicy)) {
-      throw new RangeError('Invalid options.readPolicy \'' +
-          options.readPolicy + '\'');
-    }
-  } catch (err) {
-    process.nextTick(function() {
-      callback(err);
-    });
-    return undefined;
-  }
-
-  streamCompareInternal(stream1, stream2, options, callback);
-  return undefined;
+  return promise;
 }
 
 streamCompare.makeIncremental = require('./lib/make-incremental');
@@ -511,13 +609,13 @@ module.exports = streamCompare;
 </div>
 
 <nav>
-    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="StreamState.html">StreamState</a></li></ul><h3>Global</h3><ul><li><a href="global.html#DEFAULT_OPTIONS">DEFAULT_OPTIONS</a></li><li><a href="global.html#incrementalProp">incrementalProp</a></li><li><a href="global.html#ReadPolicy">ReadPolicy</a></li><li><a href="global.html#streamCompare">streamCompare</a></li></ul>
+    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="StreamComparePromise.html">StreamComparePromise</a></li><li><a href="StreamState.html">StreamState</a></li></ul><h3>Global</h3><ul><li><a href="global.html#makeIncremental">makeIncremental</a></li><li><a href="global.html#ReadPolicy">ReadPolicy</a></li><li><a href="global.html#streamCompare">streamCompare</a></li></ul>
 </nav>
 
 <br class="clear">
 
 <footer>
-    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.4.0</a> on Sat Apr 02 2016 10:57:54 GMT-0700 (PDT)
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.4.0</a> on Fri Apr 22 2016 15:22:52 GMT-0700 (PDT)
 </footer>
 
 <script> prettyPrint(); </script>

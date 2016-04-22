@@ -332,7 +332,8 @@ describe('streamCompare', function() {
       );
     });
 
-    ['events', 'incremental', 'readPolicy'].forEach(function(optionName) {
+    var optionNames = ['endEvents', 'events', 'incremental', 'readPolicy'];
+    optionNames.forEach(function(optionName) {
       it('for invalid options.' + optionName, function() {
         should.throws(
           function() {
@@ -1441,6 +1442,25 @@ describe('Promise', function() {
       var promise = streamCompare(stream1, stream2, compare);
       promise.end();
       return promise;
+    });
+
+    it('does not compare after resolving', function() {
+      var ended = false;
+      function compare(state1, state2) {
+        assert.strictEqual(ended, false);
+      }
+
+      var stream1 = new stream.PassThrough();
+      var stream2 = new stream.PassThrough();
+      var promise = streamCompare(stream1, stream2, compare);
+
+      stream1.end();
+      stream2.end();
+
+      return promise.then(function(value) {
+        ended = true;
+        promise.end();
+      });
     });
   });
 });

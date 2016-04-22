@@ -249,11 +249,9 @@ function streamCompare(stream1, stream2, optionsOrCompare) {
     stream1.removeListener('readable', readNext);
     stream1.removeListener('error', onStreamError);
     stream1.removeListener('end', readNextOnEnd);
-    if (options.endEvents) {
-      options.endEvents.forEach(function(eventName) {
-        stream1.removeListener(eventName, endListener1);
-      });
-    }
+    options.endEvents.forEach(function(eventName) {
+      stream1.removeListener(eventName, endListener1);
+    });
 
     Object.keys(listeners2).forEach(function(eventName) {
       stream2.removeListener(eventName, listeners2[eventName]);
@@ -261,11 +259,9 @@ function streamCompare(stream1, stream2, optionsOrCompare) {
     stream2.removeListener('readable', readNext);
     stream2.removeListener('error', onStreamError);
     stream2.removeListener('end', readNextOnEnd);
-    if (options.endEvents) {
-      options.endEvents.forEach(function(eventName) {
-        stream2.removeListener(eventName, endListener2);
-      });
-    }
+    options.endEvents.forEach(function(eventName) {
+      stream2.removeListener(eventName, endListener2);
+    });
 
     clearImmediate(postEndImmediate);
     clearTimeout(postEndTimeout);

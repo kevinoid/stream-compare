@@ -19,7 +19,7 @@ var streamCompare = require('stream-compare');
 
 var stream1 = fs.createReadStream(file);
 var stream2 = fs.createReadStream(file);
-streamCompare(stream1, stream2, assert.deepStrictEqual, function(err) {
+streamCompare(stream1, stream2, assert.deepStrictEqual).catch(function(err) {
   console.log(err); // AssertionError if streams differ
 });
 ```
@@ -32,7 +32,7 @@ This package is similar to the
 additional features:
 
 - Support for caller-defined comparisons, which can return errors or values
-  and are not limited to equality.
+  not limited to equality.
 - Support for both incremental and one-shot comparisons.
 - Support for caller-defined data reduction to avoid storing the entire stream
   history in memory before comparison.
@@ -77,7 +77,7 @@ var options = {
     assert.deepStrictEqual      // Compares events
   )
 };
-streamCompare(stream1, stream2, options, function(err) {
+streamCompare(stream1, stream2, options).catch(function(err) {
   console.log(err); // AssertionError if stream data values differ
 });
 ```
@@ -93,7 +93,7 @@ var options = {
   compare: assert.deepStrictEqual,
   objectMode: true
 };
-streamCompare(stream1, stream2, options, function(err) {
+streamCompare(stream1, stream2, options).catch(function(err) {
   console.log(err); // AssertionError if stream data values differ
 });
 ```
@@ -111,35 +111,29 @@ var options = {
   events: ['close', 'data', 'end', 'error'],
   readPolicy: 'none'
 };
-streamCompare(stream1, stream2, options, function(err) {
+streamCompare(stream1, stream2, options).catch(function(err) {
   console.log(err); // AssertionError if stream events (including 'data') differ
 });
 ```
 
 ### Control comparison checkpoints
 
-It is possible to use the `StreamComparison` class directly to compare streams
-non-incrementally at particular execution points in addition to, or instead
-of, when both streams have ended, as is done by the `streamCompare` function.
-The full details of this class are available in the [API
-Documentation](https://kevinoid.github.io/stream-compare/api/StreamComparison.html).
+The returned Promise includes additional methods for controlling the
+comparison.  A non-incremental compare can be run before both streams end
+using `.checkpoint()`.  Additionally, the comparison can be concluded before
+both streams end using `.end()`.  The full details are available in the [API
+Documentation](https://kevinoid.github.io/stream-compare/api/StreamComparePromise.html).
 
 ```js
-var streamCompare = require('stream-compare');
-var StreamComparison = streamCompare.StreamComparison;
+var PassThrough = require('stream').PassThrough;
 
 var stream1 = new PassThrough();
 var stream2 = new PassThrough();
-var comparison = new StreamComparison(stream1, stream2, assert.deepStrictEqual);
-comparison.on('data', function(result) {
-  console.log('compare returned ' + result);
-});
-comparison.on('error', function(err) {
-  console.log('compare threw ' + err);
-});
-comparison.on('end', function() {
-  console.log('comparison finished');
-});
+var comparison = streamCompare(stream1, stream2, assert.deepStrictEqual);
+comparison.then(
+  function() { console.log('streams are equal'); },
+  function(err) { console.log('streams differ: ' + err); }
+);
 stream1.write('Hello');
 stream2.write('Hello');
 process.nextTick(function() {

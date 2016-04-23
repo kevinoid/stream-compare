@@ -55,8 +55,7 @@
     "jsdoc": "^3.4.0",
     "mocha": "^2.3.4",
     "nodecat": "^0.1.0",
-    "rimraf": "^2.2.0",
-    "should": "^8.0.2"
+    "rimraf": "^2.2.0"
   },
   "engines": {
     "node": ">=0.10",

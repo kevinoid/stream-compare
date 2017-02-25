@@ -44,7 +44,6 @@
     "extend": "^3.0.0"
   },
   "devDependencies": {
-    "bluebird": ">=2.0.0",
     "buffer-equal": "^1.0.0",
     "codecov": "^1.0.1",
     "coveralls": "^2.11.6",

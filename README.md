@@ -1,8 +1,6 @@
 stream-compare
 ==============
 
-[![Greenkeeper badge](https://badges.greenkeeper.io/kevinoid/stream-compare.svg)](https://greenkeeper.io/)
-
 [![Build Status: Linux](https://img.shields.io/travis/kevinoid/stream-compare/master.svg?style=flat&label=build+on+linux)](https://travis-ci.org/kevinoid/stream-compare)
 [![Build Status: Windows](https://img.shields.io/appveyor/ci/kevinoid/stream-compare/master.svg?style=flat&label=build+on+windows)](https://ci.appveyor.com/project/kevinoid/stream-compare)
 [![Coverage](https://img.shields.io/codecov/c/github/kevinoid/stream-compare.svg?style=flat)](https://codecov.io/github/kevinoid/stream-compare?branch=master)

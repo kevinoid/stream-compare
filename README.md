@@ -1,7 +1,8 @@
 stream-compare
 ==============
 
-[![Build status](https://img.shields.io/travis/kevinoid/stream-compare.svg?style=flat)](https://travis-ci.org/kevinoid/stream-compare)
+[![Build Status: Linux](https://img.shields.io/travis/kevinoid/stream-compare/master.svg?style=flat&label=build+on+linux)](https://travis-ci.org/kevinoid/stream-compare)
+[![Build Status: Windows](https://img.shields.io/appveyor/ci/kevinoid/stream-compare/master.svg?style=flat&label=build+on+windows)](https://ci.appveyor.com/project/kevinoid/stream-compare)
 [![Coverage](https://img.shields.io/codecov/c/github/kevinoid/stream-compare.svg?style=flat)](https://codecov.io/github/kevinoid/stream-compare?branch=master)
 [![Dependency Status](https://img.shields.io/david/kevinoid/stream-compare.svg?style=flat)](https://david-dm.org/kevinoid/stream-compare)
 [![Supported Node Version](https://img.shields.io/node/v/stream-compare.svg?style=flat)](https://www.npmjs.com/package/stream-compare)
@@ -149,8 +150,7 @@ process.nextTick(function() {
 ```
 
 More examples can be found in the [test
-specifications](https://kevinoid.github.io/stream-compare/specs).
-
+specifications](https://kevinoid.github.io/stream-compare/spec).
 
 ## API Docs
 

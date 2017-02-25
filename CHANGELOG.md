@@ -1,18 +1,16 @@
 # Change Log
 
+## [1.0.0](https://github.com/kevinoid/stream-compare/tree/1.0.0) (2017-02-24)
+[Full Changelog](https://github.com/kevinoid/stream-compare/compare/v0.2.0...1.0.0)
+
+- **No API Changes**  Bump to 1.0 is declaration of stability rather than an
+  indication of changes.
+- Code style updates.
+- Add AppVeyor CI.
+- Test dependency updates.
+
 ## [v0.2.0](https://github.com/kevinoid/stream-compare/tree/v0.2.0) (2016-04-22)
-
-### Breaking Changes
-
-- Remove callback argument and return Promise unconditionally.  Consider using
-  [promise-nodeify](https://github.com/kevinoid/promise-nodeify) to migrate.
-
-### New Features
-
-- `endEvents` option for controlling comparison on stream end.
-- `.checkpoint()` method on returned Promise allows caller to trigger compare.
-- `.end()` method on returned Promise allows caller to end comparison.
-
+[Full Changelog](https://github.com/kevinoid/stream-compare/compare/v0.1.0...v0.2.0)
 
 ## [v0.1.0](https://github.com/kevinoid/stream-compare/tree/v0.1.0) (2016-04-02)
 

@@ -2,6 +2,7 @@
  * @copyright Copyright 2016 Kevin Locke <kevin@kevinlocke.name>
  * @license MIT
  */
+
 'use strict';
 
 var EventEmitter = require('events').EventEmitter;
@@ -1044,7 +1045,7 @@ describe('streamCompare', function() {
       function compareData(incData1, incData2) {
         deepEqual(incData1, data1[compareCount]);
         deepEqual(incData2, data2[compareCount]);
-        ++compareCount;
+        compareCount += 1;
         // null/undefined means "continue comparing future data"
         return bufferEqual(incData1, incData2) ? null : compareValue;
       }
@@ -1312,7 +1313,7 @@ describe('Promise', function() {
     });
 
     it('does not resolve for compare non-result', function() {
-      var compareValue = undefined;
+      var compareValue;
       function compare(state1, state2) {
         return compareValue;
       }
@@ -1347,7 +1348,7 @@ describe('Promise', function() {
       var compareCount = 0;
       var compareValue = false;
       function compare(state1, state2) {
-        ++compareCount;
+        compareCount += 1;
         return compareValue;
       }
 
@@ -1416,7 +1417,7 @@ describe('Promise', function() {
 
       var endCount = 0;
       function onEnd() {
-        ++endCount;
+        endCount += 1;
         if (endCount === 2) {
           promise.checkpoint();
         }
@@ -1442,7 +1443,7 @@ describe('Promise', function() {
   // Note:  Testing is lighter since most code paths shared with #checkpoint()
   describe('#end()', function() {
     it('does a non-incremental compare and ends on non-result', function() {
-      var compareValue = undefined;
+      var compareValue;
       function compare(state1, state2) {
         return compareValue;
       }

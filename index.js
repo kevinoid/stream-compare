@@ -194,13 +194,13 @@ function streamCompare(stream1, stream2, optionsOrCompare) {
   }
   if (!options.endEvents ||
       typeof options.endEvents !== 'object' ||
-      options.endEvents.length !== options.endEvents.length | 0) {
+      options.endEvents.length !== Math.floor(options.endEvents.length)) {
     throw new TypeError('options.endEvents must be Array-like');
   }
   options.endEvents = Array.prototype.slice.call(options.endEvents);
   if (!options.events ||
       typeof options.events !== 'object' ||
-      options.events.length !== options.events.length | 0) {
+      options.events.length !== Math.floor(options.events.length)) {
     throw new TypeError('options.events must be Array-like');
   }
   options.events = Array.prototype.slice.call(options.events);
@@ -210,7 +210,7 @@ function streamCompare(stream1, stream2, optionsOrCompare) {
   if (typeof options.readPolicy !== 'string') {
     throw new TypeError('options.readPolicy must be a string');
   }
-  if (!ReadPolicy.hasOwnProperty(options.readPolicy)) {
+  if (!hasOwnProperty.call(ReadPolicy, options.readPolicy)) {
     throw new RangeError('Invalid options.readPolicy \'' +
         options.readPolicy + '\'');
   }
@@ -380,7 +380,7 @@ function streamCompare(stream1, stream2, optionsOrCompare) {
     }
 
     state.ended = true;
-    ++ended;
+    ended += 1;
 
     debug(streamName(this) + ' has ended.');
 
@@ -441,7 +441,7 @@ function streamCompare(stream1, stream2, optionsOrCompare) {
       } else {
         this.data.push(data);
       }
-      ++this.totalDataLen;
+      this.totalDataLen += 1;
     } else if (typeof data !== 'string' && !(data instanceof Buffer)) {
       throw new TypeError('expected string or Buffer, got ' +
           Object.prototype.toString.call(data) + '.  Need objectMode?');

@@ -351,7 +351,7 @@ describe('streamCompare', function() {
             var options = {
               compare: deepEqual
             };
-            options[optionName] = true;  // None accepts true as valid
+            options[optionName] = true; // None accepts true as valid
             streamCompare(stream1, stream2, options);
           },
           function(err) {

@@ -236,7 +236,7 @@ function streamCompare(stream1, stream2, optionsOrCompare) {
   function streamName(stream) {
     return stream === stream1 ? 'stream1' :
       stream === stream2 ? 'stream2' :
-      'unknown stream';
+        'unknown stream';
   }
 
   function done(err, result) {
@@ -464,8 +464,8 @@ function streamCompare(stream1, stream2, optionsOrCompare) {
         // FIXME:  Potential performance issue if data or this.data are large.
         // Should append to a Buffer we control and store a slice in .data
         this.data = Buffer.concat(
-            [this.data, data],
-            this.data.length + data.length
+          [this.data, data],
+          this.data.length + data.length
         );
       }
       this.totalDataLen += data.length;

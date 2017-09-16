@@ -5,6 +5,9 @@
 
 'use strict';
 
+// Use safe-buffer as Buffer until support for Node < 4 is dropped
+// eslint-disable-next-line no-shadow
+var Buffer = require('safe-buffer').Buffer;
 var EventEmitter = require('events').EventEmitter;
 var Promise = require('any-promise');
 var assert = require('assert');
@@ -87,8 +90,8 @@ describe('streamCompare', function() {
   });
 
   it('passes stream state information to compare', function() {
-    var data1 = new Buffer('hello');
-    var data2 = new Buffer('there');
+    var data1 = Buffer.from('hello');
+    var data2 = Buffer.from('there');
 
     function compare(state1, state2) {
       deepEqual(state1.data, data1);
@@ -822,7 +825,7 @@ describe('streamCompare', function() {
         function(err) { assertInstanceOf(err, TypeError); }
       );
       stream1.write('hello');
-      stream1.end(new Buffer(' world'));
+      stream1.end(Buffer.from(' world'));
       stream2.end();
       return promise;
     });
@@ -903,8 +906,12 @@ describe('streamCompare', function() {
     });
 
     it('handles empty-Buffer \'read\' events', function() {
-      var data1 = new Buffer('hello world');
-      var data2 = [new Buffer('hello'), new Buffer(0), new Buffer(' world')];
+      var data1 = Buffer.from('hello world');
+      var data2 = [
+        Buffer.from('hello'),
+        Buffer.alloc(0),
+        Buffer.from(' world')
+      ];
       function compare(state1, state2) {
         deepEqual(state1.data, data1);
         deepEqual(state1.events, [
@@ -999,8 +1006,8 @@ describe('streamCompare', function() {
     });
 
     it('can treat data as events only', function() {
-      var data1 = new Buffer('hello');
-      var data2 = new Buffer('world');
+      var data1 = Buffer.from('hello');
+      var data2 = Buffer.from('world');
       function compare(state1, state2) {
         assert.strictEqual(state1.data, undefined);
         assert.strictEqual(state2.data, undefined);
@@ -1035,8 +1042,8 @@ describe('streamCompare', function() {
 
   describe('.makeIncremental()', function() {
     it('makes incremental from a Buffer comparison function', function() {
-      var data1 = [new Buffer('hello'), new Buffer('world')];
-      var data2 = [new Buffer('hello'), new Buffer('there')];
+      var data1 = [Buffer.from('hello'), Buffer.from('world')];
+      var data2 = [Buffer.from('hello'), Buffer.from('there')];
       // Use of compareCount in this way is illustrative, but over-specified.
       // Callers shouldn't depend on this exact behavior.
       // If this test breaks, it may be rewritten in a less-strict way
@@ -1356,7 +1363,7 @@ describe('Promise', function() {
       var stream2 = new stream.PassThrough();
       var promise = streamCompare(stream1, stream2, compare);
 
-      var testData = new Buffer('test');
+      var testData = Buffer.from('test');
 
       promise.checkpoint();
 

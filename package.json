@@ -39,8 +39,7 @@
     "version-deps": "npm install david depcheck git-branch-is travis-status"
   },
   "dependencies": {
-    "debug": "^3.0.0",
-    "extend": "^3.0.0"
+    "debug": "^3.0.0"
   },
   "devDependencies": {
     "buffer-equal": "^1.0.0",

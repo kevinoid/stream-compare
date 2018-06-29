@@ -7,7 +7,6 @@
 
 var EventEmitter = require('events').EventEmitter;
 var debug = require('debug')('stream-compare');
-var extend = require('extend');
 
 /** Comparison type.
  * @enum {string}
@@ -170,7 +169,7 @@ function streamCompare(stream1, stream2, optionsOrCompare) {
     }
   }
 
-  options = extend({}, DEFAULT_OPTIONS, options);
+  options = Object.assign({}, DEFAULT_OPTIONS, options);
   if (!options.compare) {
     options.compare = options.incremental;
   }

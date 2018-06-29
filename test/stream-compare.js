@@ -6,7 +6,6 @@
 'use strict';
 
 var EventEmitter = require('events').EventEmitter;
-var Promise = require('any-promise');
 var assert = require('assert');
 var bufferEqual = require('buffer-equal');
 var stream = require('stream');

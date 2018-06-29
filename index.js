@@ -6,7 +6,6 @@
 'use strict';
 
 var EventEmitter = require('events').EventEmitter;
-var Promise = require('any-promise');
 var debug = require('debug')('stream-compare');
 var extend = require('extend');
 

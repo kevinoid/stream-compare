@@ -5,7 +5,7 @@
 
 'use strict';
 
-var EventEmitter = require('events').EventEmitter;
+const {EventEmitter} = require('events');
 const util = require('util');
 
 const debug = util.debuglog('stream-compare');
@@ -14,7 +14,7 @@ const debug = util.debuglog('stream-compare');
  * @enum {string}
  * @private
  */
-var CompareType = {
+const CompareType = {
   /** A full (non-incremental) comparison. */
   checkpoint: 'checkpoint',
   /** An incremental comparison. */
@@ -26,7 +26,7 @@ var CompareType = {
 /** Defines the available read policies.
  * @enum {string}
  */
-var ReadPolicy = {
+const ReadPolicy = {
   /** Reads are done concurrently using <code>'data'</code> events. */
   flowing: 'flowing',
   /** Reads from the stream which has output the least data, measured in
@@ -45,7 +45,7 @@ var ReadPolicy = {
  * @const
  * @private
  */
-var DEFAULT_OPTIONS = {
+const DEFAULT_OPTIONS = {
   abortOnError: false,
   delay: 0,
   endEvents: ['end', 'error'],
@@ -160,7 +160,7 @@ function StreamState() {
  * the comparison result or error.
  */
 function streamCompare(stream1, stream2, optionsOrCompare) {
-  var options;
+  let options;
   if (optionsOrCompare) {
     if (typeof optionsOrCompare === 'function') {
       options = {compare: optionsOrCompare};
@@ -184,23 +184,23 @@ function streamCompare(stream1, stream2, optionsOrCompare) {
   if (!(stream2 instanceof EventEmitter)) {
     throw new TypeError('stream2 must be an EventEmitter');
   }
-  if (options.readPolicy === 'least' &&
-      (typeof stream1.read !== 'function' ||
-       typeof stream2.read !== 'function')) {
+  if (options.readPolicy === 'least'
+      && (typeof stream1.read !== 'function'
+       || typeof stream2.read !== 'function')) {
     throw new TypeError('streams must have .read() for readPolicy \'least\'');
   }
   if (typeof options.compare !== 'function') {
     throw new TypeError('options.compare must be a function');
   }
-  if (!options.endEvents ||
-      typeof options.endEvents !== 'object' ||
-      options.endEvents.length !== Math.floor(options.endEvents.length)) {
+  if (!options.endEvents
+      || typeof options.endEvents !== 'object'
+      || options.endEvents.length !== Math.floor(options.endEvents.length)) {
     throw new TypeError('options.endEvents must be Array-like');
   }
   options.endEvents = Array.prototype.slice.call(options.endEvents);
-  if (!options.events ||
-      typeof options.events !== 'object' ||
-      options.events.length !== Math.floor(options.events.length)) {
+  if (!options.events
+      || typeof options.events !== 'object'
+      || options.events.length !== Math.floor(options.events.length)) {
     throw new TypeError('options.events must be Array-like');
   }
   options.events = Array.prototype.slice.call(options.events);
@@ -211,32 +211,32 @@ function streamCompare(stream1, stream2, optionsOrCompare) {
     throw new TypeError('options.readPolicy must be a string');
   }
   if (!hasOwnProperty.call(ReadPolicy, options.readPolicy)) {
-    throw new RangeError('Invalid options.readPolicy \'' +
-        options.readPolicy + '\'');
+    throw new RangeError(`Invalid options.readPolicy '${
+      options.readPolicy}'`);
   }
 
-  var reject;
-  var resolve;
-  var promise = new Promise(function(resolveArg, rejectArg) {
+  let reject;
+  let resolve;
+  const promise = new Promise(((resolveArg, rejectArg) => {
     resolve = resolveArg;
     reject = rejectArg;
-  });
-  var state1 = new StreamState();
-  var state2 = new StreamState();
-  var ended = 0;
-  var isDone = false;
-  var listeners1 = {};
-  var listeners2 = {};
-  var postEndImmediate;
-  var postEndTimeout;
+  }));
+  const state1 = new StreamState();
+  const state2 = new StreamState();
+  let ended = 0;
+  let isDone = false;
+  const listeners1 = {};
+  const listeners2 = {};
+  let postEndImmediate;
+  let postEndTimeout;
 
   /** Gets the name of a stream for logging purposes.
    * @private
    */
   function streamName(stream) {
-    return stream === stream1 ? 'stream1' :
-      stream === stream2 ? 'stream2' :
-        'unknown stream';
+    return stream === stream1 ? 'stream1'
+      : stream === stream2 ? 'stream2'
+        : 'unknown stream';
   }
 
   function done(err, result) {
@@ -244,23 +244,23 @@ function streamCompare(stream1, stream2, optionsOrCompare) {
 
     debug('Unregistering stream event listeners...');
 
-    Object.keys(listeners1).forEach(function(eventName) {
+    Object.keys(listeners1).forEach((eventName) => {
       stream1.removeListener(eventName, listeners1[eventName]);
     });
     stream1.removeListener('readable', readNext);
     stream1.removeListener('error', onStreamError);
     stream1.removeListener('end', readNextOnEnd);
-    options.endEvents.forEach(function(eventName) {
+    options.endEvents.forEach((eventName) => {
       stream1.removeListener(eventName, endListener1);
     });
 
-    Object.keys(listeners2).forEach(function(eventName) {
+    Object.keys(listeners2).forEach((eventName) => {
       stream2.removeListener(eventName, listeners2[eventName]);
     });
     stream2.removeListener('readable', readNext);
     stream2.removeListener('error', onStreamError);
     stream2.removeListener('end', readNextOnEnd);
-    options.endEvents.forEach(function(eventName) {
+    options.endEvents.forEach((eventName) => {
       stream2.removeListener(eventName, endListener2);
     });
 
@@ -271,7 +271,7 @@ function streamCompare(stream1, stream2, optionsOrCompare) {
   }
 
   function onStreamError(err) {
-    debug(streamName(this) + ' emitted error', err);
+    debug(`${streamName(this)} emitted error`, err);
     reject(err);
     done();
   }
@@ -279,9 +279,9 @@ function streamCompare(stream1, stream2, optionsOrCompare) {
   function doCompare(compareFn, type) {
     debug('Performing %s compare.', type);
 
-    var hasResultOrError = false;
+    let hasResultOrError = false;
     try {
-      var result = compareFn(state1, state2);
+      const result = compareFn(state1, state2);
       if (result !== undefined && result !== null) {
         debug('Comparison produced a result:', result);
         hasResultOrError = true;
@@ -296,7 +296,7 @@ function streamCompare(stream1, stream2, optionsOrCompare) {
     if (hasResultOrError) {
       done();
       return true;
-    } else if (type === CompareType.last) {
+    } if (type === CompareType.last) {
       resolve();
       done();
       return true;
@@ -333,7 +333,7 @@ function streamCompare(stream1, stream2, optionsOrCompare) {
   };
 
   // Note:  Add event listeners before endListeners so end/error is recorded
-  options.events.forEach(function(eventName) {
+  options.events.forEach((eventName) => {
     if (listeners1[eventName]) {
       return;
     }
@@ -343,10 +343,10 @@ function streamCompare(stream1, stream2, optionsOrCompare) {
       return;
     }
 
-    function listener(/* event args */) {
+    function listener(...args) {
       this.events.push({
         name: eventName,
-        args: Array.prototype.slice.call(arguments)
+        args: Array.prototype.slice.call(args)
       });
 
       if (options.incremental) {
@@ -354,15 +354,15 @@ function streamCompare(stream1, stream2, optionsOrCompare) {
       }
     }
 
-    listeners1[eventName] = function listener1() {
-      debug('\'' + eventName + '\' event from stream1.');
-      listener.apply(state1, arguments);
+    listeners1[eventName] = function listener1(...args) {
+      debug(`'${eventName}' event from stream1.`);
+      listener.apply(state1, args);
     };
     stream1.on(eventName, listeners1[eventName]);
 
-    listeners2[eventName] = function listener2() {
-      debug('\'' + eventName + '\' event from stream2.');
-      listener.apply(state2, arguments);
+    listeners2[eventName] = function listener2(...args) {
+      debug(`'${eventName}' event from stream2.`);
+      listener.apply(state2, args);
     };
     stream2.on(eventName, listeners2[eventName]);
   });
@@ -382,7 +382,7 @@ function streamCompare(stream1, stream2, optionsOrCompare) {
     state.ended = true;
     ended += 1;
 
-    debug(streamName(this) + ' has ended.');
+    debug(`${streamName(this)} has ended.`);
 
     if (options.incremental) {
       if (doCompare(options.incremental, CompareType.incremental)) {
@@ -391,12 +391,12 @@ function streamCompare(stream1, stream2, optionsOrCompare) {
     }
 
     if (ended === 2) {
-      var postEndCompare = function() {
+      const postEndCompare = function() {
         doCompare(options.compare, CompareType.last);
       };
       if (options.delay) {
-        debug('All streams have ended.  Delaying for ' + options.delay +
-            'ms before final compare.');
+        debug(`All streams have ended.  Delaying for ${options.delay
+        }ms before final compare.`);
         postEndTimeout = setTimeout(postEndCompare, options.delay);
       } else {
         // Let pending I/O and callbacks complete to catch some errant events
@@ -412,7 +412,7 @@ function streamCompare(stream1, stream2, optionsOrCompare) {
   function endListener2() {
     endListener.call(this, state2);
   }
-  options.endEvents.forEach(function(eventName) {
+  options.endEvents.forEach((eventName) => {
     if (!options.abortOnError || eventName !== 'error') {
       stream1.on(eventName, endListener1);
       stream2.on(eventName, endListener2);
@@ -443,8 +443,8 @@ function streamCompare(stream1, stream2, optionsOrCompare) {
       }
       this.totalDataLen += 1;
     } else if (typeof data !== 'string' && !(data instanceof Buffer)) {
-      throw new TypeError('expected string or Buffer, got ' +
-          Object.prototype.toString.call(data) + '.  Need objectMode?');
+      throw new TypeError(`expected string or Buffer, got ${
+        Object.prototype.toString.call(data)}.  Need objectMode?`);
     } else if (this.data === null || this.data === undefined) {
       this.data = data;
       this.totalDataLen += data.length;
@@ -470,10 +470,10 @@ function streamCompare(stream1, stream2, optionsOrCompare) {
       }
       this.totalDataLen += data.length;
     } else {
-      throw new TypeError('read returned ' +
-          Object.prototype.toString.call(data) + ', previously ' +
-          Object.prototype.toString.call(this.data) +
-          '.  Need objectMode?');
+      throw new TypeError(`read returned ${
+        Object.prototype.toString.call(data)}, previously ${
+        Object.prototype.toString.call(this.data)
+      }.  Need objectMode?`);
     }
   }
 
@@ -486,7 +486,7 @@ function streamCompare(stream1, stream2, optionsOrCompare) {
     try {
       addData.call(state, data);
     } catch (err) {
-      debug('Error adding data from ' + streamName(this), err);
+      debug(`Error adding data from ${streamName(this)}`, err);
       reject(err);
       done();
       return;
@@ -501,11 +501,11 @@ function streamCompare(stream1, stream2, optionsOrCompare) {
    * @private
    */
   function readNext() {
-    var stream, state;
+    let stream, state;
 
     while (!isDone) {
-      if (!state1.ended &&
-          (state2.ended || state1.totalDataLen <= state2.totalDataLen)) {
+      if (!state1.ended
+          && (state2.ended || state1.totalDataLen <= state2.totalDataLen)) {
         stream = stream1;
         state = state1;
       } else if (!state2.ended) {
@@ -516,9 +516,9 @@ function streamCompare(stream1, stream2, optionsOrCompare) {
         return;
       }
 
-      var data = stream.read();
+      const data = stream.read();
       if (data === null) {
-        debug('Waiting for ' + streamName(stream) + ' to be readable...');
+        debug(`Waiting for ${streamName(stream)} to be readable...`);
         stream.once('readable', readNext);
         return;
       }

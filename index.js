@@ -6,7 +6,9 @@
 'use strict';
 
 var EventEmitter = require('events').EventEmitter;
-var debug = require('debug')('stream-compare');
+const util = require('util');
+
+const debug = util.debuglog('stream-compare');
 
 /** Comparison type.
  * @enum {string}

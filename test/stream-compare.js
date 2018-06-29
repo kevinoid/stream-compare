@@ -5,9 +5,6 @@
 
 'use strict';
 
-// Use safe-buffer as Buffer until support for Node < 4 is dropped
-// eslint-disable-next-line no-shadow
-var Buffer = require('safe-buffer').Buffer;
 var EventEmitter = require('events').EventEmitter;
 var Promise = require('any-promise');
 var assert = require('assert');

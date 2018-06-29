@@ -7,7 +7,6 @@
 
 var EventEmitter = require('events').EventEmitter;
 var assert = require('assert');
-var bufferEqual = require('buffer-equal');
 var stream = require('stream');
 var streamCompare = require('..');
 
@@ -1050,7 +1049,7 @@ describe('streamCompare', function() {
         deepEqual(incData2, data2[compareCount]);
         compareCount += 1;
         // null/undefined means "continue comparing future data"
-        return bufferEqual(incData1, incData2) ? null : compareValue;
+        return incData1.equals(incData2) ? null : compareValue;
       }
       function compare(state1, state2) {
         throw new Error('compare shouldn\'t be called');

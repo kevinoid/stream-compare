@@ -1,7 +1,15 @@
 # Change Log
 
-## [1.0.0](https://github.com/kevinoid/stream-compare/tree/1.0.0) (2017-02-24)
-[Full Changelog](https://github.com/kevinoid/stream-compare/compare/v0.2.0...1.0.0)
+## [v2.0.0](https://github.com/kevinoid/stream-compare/tree/v2.0.0) (2018-06-29)
+[Full Changelog](https://github.com/kevinoid/stream-compare/compare/v1.0.0...v2.0.0)
+
+- **BREAKING** Drop support for Node < 6.
+- Drop unnecessary dependencies.
+- Dependency version updates.
+- Code style improvements.
+
+## [v1.0.0](https://github.com/kevinoid/stream-compare/tree/v1.0.0) (2017-02-24)
+[Full Changelog](https://github.com/kevinoid/stream-compare/compare/v0.2.0...v1.0.0)
 
 - **No API Changes**  Bump to 1.0 is declaration of stability rather than an
   indication of changes.

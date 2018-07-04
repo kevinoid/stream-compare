@@ -10,8 +10,6 @@ const assert = require('assert');
 const stream = require('stream');
 const streamCompare = require('..');
 
-const deepEqual = assert.deepStrictEqual || assert.deepEqual;
-
 function assertInstanceOf(obj, ctor) {
   if (!(obj instanceof ctor)) {
     assert.fail(
@@ -89,20 +87,20 @@ describe('streamCompare', () => {
     const data2 = Buffer.from('there');
 
     function compare(state1, state2) {
-      deepEqual(state1.data, data1);
-      deepEqual(state1.ended, true);
-      deepEqual(state1.events, [
+      assert.deepStrictEqual(state1.data, data1);
+      assert.deepStrictEqual(state1.ended, true);
+      assert.deepStrictEqual(state1.events, [
         {name: 'close', args: []},
         {name: 'end', args: []}
       ]);
-      deepEqual(state1.totalDataLen, data1.length);
+      assert.deepStrictEqual(state1.totalDataLen, data1.length);
 
-      deepEqual(state2.data, data2);
-      deepEqual(state2.ended, true);
-      deepEqual(state2.events, [
+      assert.deepStrictEqual(state2.data, data2);
+      assert.deepStrictEqual(state2.ended, true);
+      assert.deepStrictEqual(state2.events, [
         {name: 'end', args: []}
       ]);
-      deepEqual(state2.totalDataLen, data2.length);
+      assert.deepStrictEqual(state2.totalDataLen, data2.length);
     }
 
     const stream1 = new stream.PassThrough();
@@ -145,7 +143,7 @@ describe('streamCompare', () => {
   it('compares empty streams as equal', () => {
     const stream1 = new stream.PassThrough();
     const stream2 = new stream.PassThrough();
-    const promise = streamCompare(stream1, stream2, deepEqual);
+    const promise = streamCompare(stream1, stream2, assert.deepStrictEqual);
     stream1.end();
     stream2.end();
     return promise;
@@ -154,10 +152,11 @@ describe('streamCompare', () => {
   it('compares empty and non-empty streams as not equal', () => {
     const stream1 = new stream.PassThrough();
     const stream2 = new stream.PassThrough();
-    const promise = streamCompare(stream1, stream2, deepEqual).then(
-      neverCalled,
-      (err) => { assertInstanceOf(err, assert.AssertionError); }
-    );
+    const promise = streamCompare(stream1, stream2, assert.deepStrictEqual)
+      .then(
+        neverCalled,
+        (err) => { assertInstanceOf(err, assert.AssertionError); }
+      );
     stream1.end();
     stream2.end('hello');
 
@@ -167,10 +166,11 @@ describe('streamCompare', () => {
   it('compares non-empty and empty streams as not equal', () => {
     const stream1 = new stream.PassThrough();
     const stream2 = new stream.PassThrough();
-    const promise = streamCompare(stream1, stream2, deepEqual).then(
-      neverCalled,
-      (err) => { assertInstanceOf(err, assert.AssertionError); }
-    );
+    const promise = streamCompare(stream1, stream2, assert.deepStrictEqual)
+      .then(
+        neverCalled,
+        (err) => { assertInstanceOf(err, assert.AssertionError); }
+      );
     stream1.end('hello');
     stream2.end();
     return promise;
@@ -179,7 +179,7 @@ describe('streamCompare', () => {
   it('compares same-data streams as equal', () => {
     const stream1 = new stream.PassThrough();
     const stream2 = new stream.PassThrough();
-    const promise = streamCompare(stream1, stream2, deepEqual);
+    const promise = streamCompare(stream1, stream2, assert.deepStrictEqual);
     stream1.end('hello');
     stream2.end('hello');
     return promise;
@@ -188,10 +188,11 @@ describe('streamCompare', () => {
   it('compares different-data streams as not equal', () => {
     const stream1 = new stream.PassThrough();
     const stream2 = new stream.PassThrough();
-    const promise = streamCompare(stream1, stream2, deepEqual).then(
-      neverCalled,
-      (err) => { assertInstanceOf(err, assert.AssertionError); }
-    );
+    const promise = streamCompare(stream1, stream2, assert.deepStrictEqual)
+      .then(
+        neverCalled,
+        (err) => { assertInstanceOf(err, assert.AssertionError); }
+      );
     stream1.end('hello');
     stream2.end('world');
     return promise;
@@ -218,7 +219,7 @@ describe('streamCompare', () => {
     // Note:  objectMode to prevent write-combining
     const stream1 = new stream.PassThrough({objectMode: true});
     const stream2 = new stream.PassThrough({objectMode: true});
-    const promise = streamCompare(stream1, stream2, deepEqual);
+    const promise = streamCompare(stream1, stream2, assert.deepStrictEqual);
     stream1.write('hello');
     stream1.end(' world');
     stream2.write('hello');
@@ -229,7 +230,7 @@ describe('streamCompare', () => {
   it('compares same-data different-writes as equal', () => {
     const stream1 = new stream.PassThrough();
     const stream2 = new stream.PassThrough();
-    const promise = streamCompare(stream1, stream2, deepEqual);
+    const promise = streamCompare(stream1, stream2, assert.deepStrictEqual);
     stream1.end('hello world');
     stream2.write('hello');
     stream2.end(' world');
@@ -239,7 +240,7 @@ describe('streamCompare', () => {
   it('compares different-writes to objectMode streams equal', () => {
     const stream1 = new stream.PassThrough({objectMode: true});
     const stream2 = new stream.PassThrough({objectMode: true});
-    const promise = streamCompare(stream1, stream2, deepEqual);
+    const promise = streamCompare(stream1, stream2, assert.deepStrictEqual);
     stream1.end('hello world');
     stream2.write('hello');
     stream2.end(' world');
@@ -250,7 +251,7 @@ describe('streamCompare', () => {
     const stream1 = new stream.PassThrough({objectMode: true});
     const stream2 = new stream.PassThrough({objectMode: true});
     const options = {
-      compare: deepEqual,
+      compare: assert.deepStrictEqual,
       objectMode: true
     };
     const promise = streamCompare(stream1, stream2, options).then(
@@ -271,7 +272,7 @@ describe('streamCompare', () => {
     it('throws for invalid stream1', () => {
       assert.throws(
         () => {
-          streamCompare(true, stream2, deepEqual);
+          streamCompare(true, stream2, assert.deepStrictEqual);
         },
         (err) => err instanceof TypeError
             && /\bstream1\b/.test(err.message)
@@ -281,7 +282,7 @@ describe('streamCompare', () => {
     it('throws for invalid stream2', () => {
       assert.throws(
         () => {
-          streamCompare(stream1, true, deepEqual);
+          streamCompare(stream1, true, assert.deepStrictEqual);
         },
         (err) => err instanceof TypeError
             && /\bstream2\b/.test(err.message)
@@ -290,7 +291,9 @@ describe('streamCompare', () => {
 
     it('throws for no .read() method and readPolicy \'least\'', () => {
       assert.throws(
-        () => { streamCompare(stream1, new EventEmitter(), deepEqual); },
+        () => {
+          streamCompare(stream1, new EventEmitter(), assert.deepStrictEqual);
+        },
         (err) => err instanceof TypeError
             && /\bread\b/.test(err.message)
             && /\bleast\b/.test(err.message)
@@ -317,7 +320,7 @@ describe('streamCompare', () => {
       assert.throws(
         () => {
           const options = {
-            compare: deepEqual,
+            compare: assert.deepStrictEqual,
             readPolicy: 'invalid'
           };
           streamCompare(stream1, stream2, options);
@@ -333,7 +336,7 @@ describe('streamCompare', () => {
         assert.throws(
           () => {
             const options = {
-              compare: deepEqual
+              compare: assert.deepStrictEqual
             };
             options[optionName] = true; // None accepts true as valid
             streamCompare(stream1, stream2, options);
@@ -352,7 +355,7 @@ describe('streamCompare', () => {
     it('compares error events by default', () => {
       const stream1 = new stream.PassThrough();
       const stream2 = new stream.PassThrough();
-      const promise = streamCompare(stream1, stream2, deepEqual);
+      const promise = streamCompare(stream1, stream2, assert.deepStrictEqual);
       stream1.emit('error', new Error('Test'));
       stream2.emit('error', new Error('Test'));
       return promise;
@@ -363,7 +366,7 @@ describe('streamCompare', () => {
       const stream2 = new stream.PassThrough();
       const options = {
         abortOnError: true,
-        compare: deepEqual
+        compare: assert.deepStrictEqual
       };
       const errTest = new Error('Test');
       const promise = streamCompare(stream1, stream2, options).then(
@@ -414,7 +417,7 @@ describe('streamCompare', () => {
       // Since 0 is treated as 1, min is 1
       const eventDelay = 1;
       const options = {
-        compare: deepEqual,
+        compare: assert.deepStrictEqual,
         delay: eventDelay + 1
       };
       const promise = streamCompare(stream1, stream2, options).then(
@@ -435,7 +438,7 @@ describe('streamCompare', () => {
       const stream1 = new stream.PassThrough();
       const stream2 = new stream.PassThrough();
       const options = {
-        compare: deepEqual,
+        compare: assert.deepStrictEqual,
         endEvents: ['test']
       };
       const promise = streamCompare(stream1, stream2, options);
@@ -459,7 +462,7 @@ describe('streamCompare', () => {
     it('can avoid ending on stream \'end\'', () => {
       const stream1 = new stream.PassThrough();
       const stream2 = new stream.PassThrough();
-      const promise = streamCompare(stream1, stream2, deepEqual);
+      const promise = streamCompare(stream1, stream2, assert.deepStrictEqual);
 
       let ended = false;
       promise.then(() => {
@@ -510,7 +513,7 @@ describe('streamCompare', () => {
     it('compares Readable events by default', () => {
       const stream1 = new stream.PassThrough();
       const stream2 = new stream.PassThrough();
-      const promise = streamCompare(stream1, stream2, deepEqual);
+      const promise = streamCompare(stream1, stream2, assert.deepStrictEqual);
       stream1.emit('close');
       stream1.end();
       stream2.emit('close');
@@ -520,8 +523,8 @@ describe('streamCompare', () => {
 
     it('can ignore all events', () => {
       function compare(state1, state2) {
-        deepEqual(state1.events, []);
-        deepEqual(state2.events, []);
+        assert.deepStrictEqual(state1.events, []);
+        assert.deepStrictEqual(state2.events, []);
       }
       const stream1 = new stream.PassThrough();
       const stream2 = new stream.PassThrough();
@@ -542,7 +545,7 @@ describe('streamCompare', () => {
     it('ignores non-Readable events by default', () => {
       const stream1 = new stream.PassThrough();
       const stream2 = new stream.PassThrough();
-      const promise = streamCompare(stream1, stream2, deepEqual);
+      const promise = streamCompare(stream1, stream2, assert.deepStrictEqual);
       stream1.end();
       stream1.emit('finish');
       stream2.end();
@@ -552,10 +555,10 @@ describe('streamCompare', () => {
     it('can compare custom events', () => {
       const eventValue = {};
       function compare(state1, state2) {
-        deepEqual(state1.events, [
+        assert.deepStrictEqual(state1.events, [
           {name: 'test', args: [eventValue]}
         ]);
-        deepEqual(state2.events, []);
+        assert.deepStrictEqual(state2.events, []);
       }
       const stream1 = new stream.PassThrough();
       const stream2 = new stream.PassThrough();
@@ -573,10 +576,10 @@ describe('streamCompare', () => {
     it('ignores multiple occurrances of event name', () => {
       const eventValue = {};
       function compare(state1, state2) {
-        deepEqual(state1.events, [
+        assert.deepStrictEqual(state1.events, [
           {name: 'test', args: [eventValue]}
         ]);
-        deepEqual(state2.events, []);
+        assert.deepStrictEqual(state2.events, []);
       }
       const stream1 = new stream.PassThrough();
       const stream2 = new stream.PassThrough();
@@ -594,10 +597,11 @@ describe('streamCompare', () => {
     it('compares different Readable events as different', () => {
       const stream1 = new stream.PassThrough();
       const stream2 = new stream.PassThrough();
-      const promise = streamCompare(stream1, stream2, deepEqual).then(
-        neverCalled,
-        (err) => { assertInstanceOf(err, assert.AssertionError); }
-      );
+      const promise = streamCompare(stream1, stream2, assert.deepStrictEqual)
+        .then(
+          neverCalled,
+          (err) => { assertInstanceOf(err, assert.AssertionError); }
+        );
       stream1.emit('close');
       stream1.end();
       stream2.end();
@@ -607,10 +611,11 @@ describe('streamCompare', () => {
     it('compares different event counts as different', () => {
       const stream1 = new stream.PassThrough();
       const stream2 = new stream.PassThrough();
-      const promise = streamCompare(stream1, stream2, deepEqual).then(
-        neverCalled,
-        (err) => { assertInstanceOf(err, assert.AssertionError); }
-      );
+      const promise = streamCompare(stream1, stream2, assert.deepStrictEqual)
+        .then(
+          neverCalled,
+          (err) => { assertInstanceOf(err, assert.AssertionError); }
+        );
       stream1.emit('close');
       stream1.emit('close');
       stream1.end();
@@ -623,10 +628,11 @@ describe('streamCompare', () => {
     it('compares multiple non-overlapping end events', () => {
       const stream1 = new stream.PassThrough();
       const stream2 = new stream.PassThrough();
-      const promise = streamCompare(stream1, stream2, deepEqual).then(
-        neverCalled,
-        (err) => { assertInstanceOf(err, assert.AssertionError); }
-      );
+      const promise = streamCompare(stream1, stream2, assert.deepStrictEqual)
+        .then(
+          neverCalled,
+          (err) => { assertInstanceOf(err, assert.AssertionError); }
+        );
       // streamCompare may read from either stream first and the 'end' event
       // does not fire until read() is called after EOF, so we emit directly
       // for first stream.  Then streamCompare must read from the second.
@@ -641,10 +647,11 @@ describe('streamCompare', () => {
     it('compares immediate overlapping end events', () => {
       const stream1 = new stream.PassThrough();
       const stream2 = new stream.PassThrough();
-      const promise = streamCompare(stream1, stream2, deepEqual).then(
-        neverCalled,
-        (err) => { assertInstanceOf(err, assert.AssertionError); }
-      );
+      const promise = streamCompare(stream1, stream2, assert.deepStrictEqual)
+        .then(
+          neverCalled,
+          (err) => { assertInstanceOf(err, assert.AssertionError); }
+        );
       stream1.end();
       stream2.end();
       stream2.once('end', () => {
@@ -665,7 +672,7 @@ describe('streamCompare', () => {
       const stream1 = new stream.PassThrough();
       const stream2 = new stream.PassThrough();
       const options = {
-        compare: deepEqual,
+        compare: assert.deepStrictEqual,
         incremental
       };
       const promise = streamCompare(stream1, stream2, options).then(
@@ -801,10 +808,11 @@ describe('streamCompare', () => {
       // Streams are in objectMode, streamCompare is not
       const stream1 = new stream.PassThrough({objectMode: true});
       const stream2 = new stream.PassThrough({objectMode: true});
-      const promise = streamCompare(stream1, stream2, deepEqual).then(
-        neverCalled,
-        (err) => { assertInstanceOf(err, TypeError); }
-      );
+      const promise = streamCompare(stream1, stream2, assert.deepStrictEqual)
+        .then(
+          neverCalled,
+          (err) => { assertInstanceOf(err, TypeError); }
+        );
       stream1.write('hello');
       stream1.end(Buffer.from(' world'));
       stream2.end();
@@ -815,10 +823,11 @@ describe('streamCompare', () => {
       // Streams are in objectMode, streamCompare is not
       const stream1 = new stream.PassThrough({objectMode: true});
       const stream2 = new stream.PassThrough({objectMode: true});
-      const promise = streamCompare(stream1, stream2, deepEqual).then(
-        neverCalled,
-        (err) => { assertInstanceOf(err, TypeError); }
-      );
+      const promise = streamCompare(stream1, stream2, assert.deepStrictEqual)
+        .then(
+          neverCalled,
+          (err) => { assertInstanceOf(err, TypeError); }
+        );
       stream1.end({test: true});
       stream2.end();
       return promise;
@@ -828,7 +837,7 @@ describe('streamCompare', () => {
       const stream1 = new stream.PassThrough({objectMode: true});
       const stream2 = new stream.PassThrough({objectMode: true});
       const options = {
-        compare: deepEqual,
+        compare: assert.deepStrictEqual,
         objectMode: true
       };
       const promise = streamCompare(stream1, stream2, options);
@@ -850,7 +859,7 @@ describe('streamCompare', () => {
       const stream1 = new stream.PassThrough();
       const stream2 = new stream.PassThrough();
       const options = {
-        compare: deepEqual,
+        compare: assert.deepStrictEqual,
         readPolicy: 'flowing',
         incremental
       };
@@ -878,7 +887,7 @@ describe('streamCompare', () => {
     it('compares the same stream as equal when \'flowing\'', () => {
       const stream1 = new stream.PassThrough();
       const options = {
-        compare: deepEqual,
+        compare: assert.deepStrictEqual,
         readPolicy: 'flowing'
       };
       const promise = streamCompare(stream1, stream1, options);
@@ -894,15 +903,15 @@ describe('streamCompare', () => {
         Buffer.from(' world')
       ];
       function compare(state1, state2) {
-        deepEqual(state1.data, data1);
-        deepEqual(state1.events, [
+        assert.deepStrictEqual(state1.data, data1);
+        assert.deepStrictEqual(state1.events, [
           {name: 'data', args: [data1]}
         ]);
 
         // Data properly recombined by flowing reads
-        deepEqual(state2.data, Buffer.concat(data2));
+        assert.deepStrictEqual(state2.data, Buffer.concat(data2));
         // Events record each 'data' event, even empty ones
-        deepEqual(state2.events, [
+        assert.deepStrictEqual(state2.events, [
           {name: 'data', args: [data2[0]]},
           {name: 'data', args: [data2[1]]},
           {name: 'data', args: [data2[2]]}
@@ -931,15 +940,15 @@ describe('streamCompare', () => {
       const data1 = 'hello world';
       const data2 = ['hello', '', ' world'];
       function compare(state1, state2) {
-        deepEqual(state1.data, data1);
-        deepEqual(state1.events, [
+        assert.deepStrictEqual(state1.data, data1);
+        assert.deepStrictEqual(state1.events, [
           {name: 'data', args: [data1]}
         ]);
 
         // Data properly recombined by flowing reads
-        deepEqual(state2.data, data2.join(''));
+        assert.deepStrictEqual(state2.data, data2.join(''));
         // Events record each 'data' event, even empty ones
-        deepEqual(state2.events, [
+        assert.deepStrictEqual(state2.events, [
           {name: 'data', args: [data2[0]]},
           {name: 'data', args: [data2[1]]},
           {name: 'data', args: [data2[2]]}
@@ -992,12 +1001,12 @@ describe('streamCompare', () => {
       function compare(state1, state2) {
         assert.strictEqual(state1.data, undefined);
         assert.strictEqual(state2.data, undefined);
-        deepEqual(state1.events, [
+        assert.deepStrictEqual(state1.events, [
           {name: 'close', args: []},
           {name: 'data', args: [data1]},
           {name: 'end', args: []}
         ]);
-        deepEqual(state2.events, [
+        assert.deepStrictEqual(state2.events, [
           {name: 'data', args: [data2]},
           {name: 'close', args: []},
           {name: 'end', args: []}
@@ -1031,8 +1040,8 @@ describe('streamCompare', () => {
       let compareCount = 0;
       const compareValue = false;
       function compareData(incData1, incData2) {
-        deepEqual(incData1, data1[compareCount]);
-        deepEqual(incData2, data2[compareCount]);
+        assert.deepStrictEqual(incData1, data1[compareCount]);
+        assert.deepStrictEqual(incData2, data2[compareCount]);
         compareCount += 1;
         // null/undefined means "continue comparing future data"
         return incData1.equals(incData2) ? null : compareValue;
@@ -1068,7 +1077,7 @@ describe('streamCompare', () => {
         assertInstanceOf(incEvents2, Array);
 
         try {
-          assert.deepEqual(incEvents1, incEvents2);
+          assert.assert.deepStrictEqual(incEvents1, incEvents2);
           // null/undefined means "continue comparing future data"
           return null;
         } catch (err) {
@@ -1108,7 +1117,7 @@ describe('streamCompare', () => {
       const stream2 = new stream.PassThrough({objectMode: true});
       const options = {
         compare,
-        incremental: streamCompare.makeIncremental(deepEqual)
+        incremental: streamCompare.makeIncremental(assert.deepStrictEqual)
       };
       const promise = streamCompare(stream1, stream2, options);
       stream1.write('hello');
@@ -1134,7 +1143,7 @@ describe('streamCompare', () => {
       const stream2 = new stream.PassThrough(streamOptions);
       const options = {
         compare,
-        incremental: streamCompare.makeIncremental(deepEqual)
+        incremental: streamCompare.makeIncremental(assert.deepStrictEqual)
       };
       const promise = streamCompare(stream1, stream2, options);
       stream1.write('hello');
@@ -1154,7 +1163,10 @@ describe('streamCompare', () => {
       const stream2 = new stream.PassThrough();
       const options = {
         compare,
-        incremental: streamCompare.makeIncremental(deepEqual, deepEqual)
+        incremental: streamCompare.makeIncremental(
+          assert.deepStrictEqual,
+          assert.deepStrictEqual
+        )
       };
       const promise = streamCompare(stream1, stream2, options);
       stream1.emit('close');
@@ -1169,7 +1181,7 @@ describe('streamCompare', () => {
       const stream1 = new stream.PassThrough({objectMode: true});
       const stream2 = new stream.PassThrough({objectMode: true});
       const options = {
-        incremental: streamCompare.makeIncremental(deepEqual)
+        incremental: streamCompare.makeIncremental(assert.deepStrictEqual)
       };
       let isDone = false;
       const promise = streamCompare(stream1, stream2, options).then(() => {
@@ -1192,7 +1204,7 @@ describe('streamCompare', () => {
       const stream1 = new stream.PassThrough();
       const stream2 = new stream.PassThrough();
       const options = {
-        incremental: streamCompare.makeIncremental(deepEqual)
+        incremental: streamCompare.makeIncremental(assert.deepStrictEqual)
       };
       const promise = streamCompare(stream1, stream2, options).then(
         neverCalled,
@@ -1207,7 +1219,7 @@ describe('streamCompare', () => {
       const stream1 = new stream.PassThrough();
       const stream2 = new stream.PassThrough();
       const options = {
-        incremental: streamCompare.makeIncremental(deepEqual)
+        incremental: streamCompare.makeIncremental(assert.deepStrictEqual)
       };
       const promise = streamCompare(stream1, stream2, options).then(
         neverCalled,
@@ -1223,7 +1235,7 @@ describe('streamCompare', () => {
       const stream1 = new stream.PassThrough();
       const stream2 = new stream.PassThrough();
       const options = {
-        incremental: streamCompare.makeIncremental(deepEqual)
+        incremental: streamCompare.makeIncremental(assert.deepStrictEqual)
       };
       const promise = streamCompare(stream1, stream2, options).then(
         neverCalled,
@@ -1359,8 +1371,8 @@ describe('Promise', () => {
           setImmediate(() => {
             assert.strictEqual(compareCount, 1);
 
-            deepEqual(stream1.read(), testData);
-            deepEqual(stream2.read(), testData);
+            assert.deepStrictEqual(stream1.read(), testData);
+            assert.deepStrictEqual(stream2.read(), testData);
 
             resolve();
           });

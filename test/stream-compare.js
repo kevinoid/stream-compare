@@ -441,12 +441,9 @@ describe('streamCompare', () => {
         compare: assert.deepStrictEqual,
         endEvents: ['test'],
       };
-      const promise = streamCompare(stream1, stream2, options);
-
       let ended = false;
-      promise.then(() => {
-        ended = true;
-      });
+      const promise = streamCompare(stream1, stream2, options)
+        .then(() => { ended = true; });
 
       stream1.emit('test');
 
@@ -462,12 +459,9 @@ describe('streamCompare', () => {
     it('can avoid ending on stream \'end\'', () => {
       const stream1 = new stream.PassThrough();
       const stream2 = new stream.PassThrough();
-      const promise = streamCompare(stream1, stream2, assert.deepStrictEqual);
-
       let ended = false;
-      promise.then(() => {
-        ended = true;
-      });
+      const promise = streamCompare(stream1, stream2, assert.deepStrictEqual)
+        .then(() => { ended = true; });
 
       stream1.end();
       stream2.end();
@@ -476,7 +470,7 @@ describe('streamCompare', () => {
         setImmediate(() => {
           assert.strictEqual(ended, false);
 
-          resolve();
+          resolve(promise);
         });
       });
     });
@@ -1323,7 +1317,7 @@ describe('Promise', () => {
       const promise = streamCompare(stream1, stream2, compare);
 
       let ended = false;
-      promise.then(() => {
+      const promise2 = promise.then(() => {
         ended = true;
       });
 
@@ -1338,7 +1332,7 @@ describe('Promise', () => {
             stream1.end();
             stream2.end();
 
-            resolve(promise);
+            resolve(promise2);
           });
         });
       });

@@ -5,7 +5,7 @@
 
 'use strict';
 
-const {EventEmitter} = require('events');
+const { EventEmitter } = require('events');
 const util = require('util');
 
 const debug = util.debuglog('stream-compare');
@@ -20,7 +20,7 @@ const CompareType = {
   /** An incremental comparison. */
   incremental: 'incremental',
   /** A full comparison followed by <code>'end'</code>. */
-  last: 'last'
+  last: 'last',
 };
 
 /** Defines the available read policies.
@@ -38,7 +38,7 @@ const ReadPolicy = {
    * <code>.read()</code> the data elsewhere, or call <code>.resume()</code> on
    * the streams so that the data will be read and <code>'end'</code> can be
    * reached. */
-  none: 'none'
+  none: 'none',
 };
 
 /** Default option values.
@@ -53,7 +53,7 @@ const DEFAULT_OPTIONS = {
   events: ['close', 'end', 'error'],
   objectMode: false,
   /** @type {!ReadPolicy} */
-  readPolicy: 'least'
+  readPolicy: 'least',
 };
 
 /** Caller-visible stream state for comparison.
@@ -163,7 +163,7 @@ function streamCompare(stream1, stream2, optionsOrCompare) {
   let options;
   if (optionsOrCompare) {
     if (typeof optionsOrCompare === 'function') {
-      options = {compare: optionsOrCompare};
+      options = { compare: optionsOrCompare };
     } else if (typeof optionsOrCompare === 'object') {
       options = optionsOrCompare;
     } else {
@@ -171,7 +171,7 @@ function streamCompare(stream1, stream2, optionsOrCompare) {
     }
   }
 
-  options = Object.assign({}, DEFAULT_OPTIONS, options);
+  options = { ...DEFAULT_OPTIONS, ...options };
   if (!options.compare) {
     options.compare = options.incremental;
   }
@@ -217,10 +217,10 @@ function streamCompare(stream1, stream2, optionsOrCompare) {
 
   let reject;
   let resolve;
-  const promise = new Promise(((resolveArg, rejectArg) => {
+  const promise = new Promise((resolveArg, rejectArg) => {
     resolve = resolveArg;
     reject = rejectArg;
-  }));
+  });
   const state1 = new StreamState();
   const state2 = new StreamState();
   let ended = 0;
@@ -346,7 +346,7 @@ function streamCompare(stream1, stream2, optionsOrCompare) {
     function listener(...args) {
       this.events.push({
         name: eventName,
-        args: Array.prototype.slice.call(args)
+        args: Array.prototype.slice.call(args),
       });
 
       if (options.incremental) {
@@ -465,7 +465,7 @@ function streamCompare(stream1, stream2, optionsOrCompare) {
         // Should append to a Buffer we control and store a slice in .data
         this.data = Buffer.concat(
           [this.data, data],
-          this.data.length + data.length
+          this.data.length + data.length,
         );
       }
       this.totalDataLen += data.length;

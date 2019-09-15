@@ -245,6 +245,8 @@ function streamCompare(stream1, stream2, optionsOrCompare) {
 
     debug('Unregistering stream event listeners...');
 
+    /* eslint-disable no-use-before-define */
+
     Object.keys(listeners1).forEach((eventName) => {
       stream1.removeListener(eventName, listeners1[eventName]);
     });
@@ -264,6 +266,8 @@ function streamCompare(stream1, stream2, optionsOrCompare) {
     options.endEvents.forEach((eventName) => {
       stream2.removeListener(eventName, endListener2);
     });
+
+    /* eslint-enable no-use-before-define */
 
     clearImmediate(postEndImmediate);
     clearTimeout(postEndTimeout);

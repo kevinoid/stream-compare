@@ -217,6 +217,7 @@ function streamCompare(stream1, stream2, optionsOrCompare) {
 
   let reject;
   let resolve;
+  // eslint-disable-next-line promise/param-names
   const promise = new Promise((resolveArg, rejectArg) => {
     resolve = resolveArg;
     reject = rejectArg;

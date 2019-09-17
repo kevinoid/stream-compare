@@ -275,6 +275,8 @@ function streamCompare(stream1, stream2, optionsOrCompare) {
     debug('Comparison finished.');
   }
 
+  // FIXME: https://github.com/sindresorhus/eslint-plugin-unicorn/issues/374
+  // eslint-disable-next-line unicorn/consistent-function-scoping
   function onStreamError(err) {
     debug(`${streamName(this)} emitted error`, err);
     reject(err);

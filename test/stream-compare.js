@@ -10,6 +10,9 @@ const assert = require('assert');
 const stream = require('stream');
 const streamCompare = require('..');
 
+// Many helper functions are defined in the tests in which they are used.
+/* eslint-disable unicorn/consistent-function-scoping */
+
 function assertInstanceOf(obj, ctor) {
   if (!(obj instanceof ctor)) {
     assert.fail(

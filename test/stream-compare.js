@@ -92,17 +92,34 @@ describe('streamCompare', () => {
     function compare(state1, state2) {
       assert.deepStrictEqual(state1.data, data1);
       assert.deepStrictEqual(state1.ended, true);
-      assert.deepStrictEqual(state1.events, [
-        { name: 'close', args: [] },
-        { name: 'end', args: [] },
-      ]);
+      // PassThrough emits close after end in v14 (nodejs/node#30623)
+      if (state1.events && state1.events.length === 2) {
+        assert.deepStrictEqual(state1.events, [
+          { name: 'close', args: [] },
+          { name: 'end', args: [] },
+        ]);
+      } else {
+        assert.deepStrictEqual(state1.events, [
+          { name: 'close', args: [] },
+          { name: 'end', args: [] },
+          { name: 'close', args: [] },
+        ]);
+      }
       assert.deepStrictEqual(state1.totalDataLen, data1.length);
 
       assert.deepStrictEqual(state2.data, data2);
       assert.deepStrictEqual(state2.ended, true);
-      assert.deepStrictEqual(state2.events, [
-        { name: 'end', args: [] },
-      ]);
+      // PassThrough emits close after end in v14 (nodejs/node#30623)
+      if (state2.events && state2.events.length === 1) {
+        assert.deepStrictEqual(state2.events, [
+          { name: 'end', args: [] },
+        ]);
+      } else {
+        assert.deepStrictEqual(state2.events, [
+          { name: 'end', args: [] },
+          { name: 'close', args: [] },
+        ]);
+      }
       assert.deepStrictEqual(state2.totalDataLen, data2.length);
     }
 
@@ -998,16 +1015,35 @@ describe('streamCompare', () => {
       function compare(state1, state2) {
         assert.strictEqual(state1.data, undefined);
         assert.strictEqual(state2.data, undefined);
-        assert.deepStrictEqual(state1.events, [
-          { name: 'close', args: [] },
-          { name: 'data', args: [data1] },
-          { name: 'end', args: [] },
-        ]);
-        assert.deepStrictEqual(state2.events, [
-          { name: 'data', args: [data2] },
-          { name: 'close', args: [] },
-          { name: 'end', args: [] },
-        ]);
+        // PassThrough emits close after end in v14 (nodejs/node#30623)
+        if (state1.events && state1.events.length === 3) {
+          assert.deepStrictEqual(state1.events, [
+            { name: 'close', args: [] },
+            { name: 'data', args: [data1] },
+            { name: 'end', args: [] },
+          ]);
+        } else {
+          assert.deepStrictEqual(state1.events, [
+            { name: 'close', args: [] },
+            { name: 'data', args: [data1] },
+            { name: 'end', args: [] },
+            { name: 'close', args: [] },
+          ]);
+        }
+        if (state2.events && state2.events.length === 3) {
+          assert.deepStrictEqual(state2.events, [
+            { name: 'data', args: [data2] },
+            { name: 'close', args: [] },
+            { name: 'end', args: [] },
+          ]);
+        } else {
+          assert.deepStrictEqual(state2.events, [
+            { name: 'data', args: [data2] },
+            { name: 'close', args: [] },
+            { name: 'end', args: [] },
+            { name: 'close', args: [] },
+          ]);
+        }
       }
 
       const stream1 = new stream.PassThrough();

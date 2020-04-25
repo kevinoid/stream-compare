@@ -359,17 +359,19 @@ function streamCompare(stream1, stream2, optionsOrCompare) {
       }
     }
 
-    listeners1[eventName] = function listener1(...args) {
+    function listener1(...args) {
       debug(`'${eventName}' event from stream1.`);
       listener.apply(state1, args);
-    };
-    stream1.on(eventName, listeners1[eventName]);
+    }
+    listeners1[eventName] = listener1;
+    stream1.on(eventName, listener1);
 
-    listeners2[eventName] = function listener2(...args) {
+    function listener2(...args) {
       debug(`'${eventName}' event from stream2.`);
       listener.apply(state2, args);
-    };
-    stream2.on(eventName, listeners2[eventName]);
+    }
+    listeners2[eventName] = listener2;
+    stream2.on(eventName, listener2);
   });
 
   /** Handles stream end events.

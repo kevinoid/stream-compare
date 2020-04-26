@@ -1,4 +1,21 @@
-# Change Log
+# [3.0.0](https://github.com/kevinoid/stream-compare/compare/v2.0.0...v3.0.0) (2020-04-26)
+
+
+### BREAKING CHANGES
+
+* Additional events after `'end'` are compared by default, if they occur before
+  the event queue becomes empty since the previous event (i.e. before
+  `setImmediate` from the last event on a stream).
+* `options.delay` applies after `setImmediate` from the last event.
+* Drop support for Node.js before 10.13.
+
+
+### Bug Fixes
+
+* `makeIncremental` now considers whether additional events are expected,
+  rather than whether `'end'` has been emitted
+  ([f7ddc29](https://github.com/kevinoid/stream-compare/commit/f7ddc29690ca6a1d8f54144097cefb1cf9394cda))
+
 
 ## [v2.0.0](https://github.com/kevinoid/stream-compare/tree/v2.0.0) (2018-06-29)
 [Full Changelog](https://github.com/kevinoid/stream-compare/compare/v1.0.0...v2.0.0)

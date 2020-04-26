@@ -464,6 +464,8 @@ stream.</td>
 
 
 
+
+
 <h5>Returns:</h5>
 
         
@@ -598,7 +600,7 @@ compared values if no result is reached.
             <td class="type">
             
                 
-<span class="param-type">!<a href="global.html#StreamCompareOptions">StreamCompareOptions</a>.&lt;CompareResult></span>
+<span class="param-type">!StreamCompareOptions.&lt;CompareResult></span>
 |
 
 <span class="param-type">function</span>
@@ -653,7 +655,7 @@ options.compare).</td>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="index.js.html">index.js</a>, <a href="index.js.html#line162">line 162</a>
+        <a href="index.js.html">index.js</a>, <a href="index.js.html#line169">line 169</a>
     </li></ul></dd>
     
 
@@ -663,6 +665,8 @@ options.compare).</td>
 
     
 </dl>
+
+
 
 
 
@@ -708,387 +712,6 @@ the comparison result or error.
     
 
     
-        <h3 class="subsection-title">Type Definitions</h3>
-
-        
-                
-<h4 class="name" id="StreamCompareOptions">StreamCompareOptions</h4>
-
-
-
-
-<div class="description">
-    Options for <a href="global.html#streamCompare">streamCompare</a>.
-
-@ template CompareResult
-</div>
-
-
-
-    <h5>Type:</h5>
-    <ul>
-        <li>
-            
-<span class="param-type">Object</span>
-
-
-        </li>
-    </ul>
-
-
-
-
-
-    <h5 class="subsection-title">Properties:</h5>
-
-    
-
-<table class="props">
-    <thead>
-    <tr>
-        
-        <th>Name</th>
-        
-
-        <th>Type</th>
-
-        
-        <th>Attributes</th>
-        
-
-        
-
-        <th class="last">Description</th>
-    </tr>
-    </thead>
-
-    <tbody>
-    
-
-        <tr>
-            
-                <td class="name"><code>abortOnError</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">boolean</span>
-
-
-            
-            </td>
-
-            
-                <td class="attributes">
-                
-                    &lt;optional><br>
-                
-
-                
-                </td>
-            
-
-            
-
-            <td class="description last">Abort comparison and return error emitted
-by either stream.  (default: <code>false</code>)</td>
-        </tr>
-
-    
-
-        <tr>
-            
-                <td class="name"><code>compare</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">function</span>
-
-
-            
-            </td>
-
-            
-                <td class="attributes">
-                
-                    &lt;optional><br>
-                
-
-                
-                </td>
-            
-
-            
-
-            <td class="description last">Comparison function
-which will be called with a StreamState object for each stream, after both
-streams have ended.  The value returned by this function will resolve the
-returned promise and be passed to the callback as its second argument.  A
-value thrown by this function will reject the promise and be passed to the
-callback as its first argument.  This function is required if incremental is
-not specified.</td>
-        </tr>
-
-    
-
-        <tr>
-            
-                <td class="name"><code>delay</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">number</span>
-
-
-            
-            </td>
-
-            
-                <td class="attributes">
-                
-                    &lt;optional><br>
-                
-
-                
-                </td>
-            
-
-            
-
-            <td class="description last">Additional delay (in ms) after streams end before
-comparing.  (default: <code>0</code>)</td>
-        </tr>
-
-    
-
-        <tr>
-            
-                <td class="name"><code>endEvents</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">Array.&lt;string></span>
-
-
-            
-            </td>
-
-            
-                <td class="attributes">
-                
-                    &lt;optional><br>
-                
-
-                
-                </td>
-            
-
-            
-
-            <td class="description last">Names of events which signal the end of
-a stream.  Final compare is performed once both streams have emitted an end
-event.  (default: <code>['end', 'error']</code>)</td>
-        </tr>
-
-    
-
-        <tr>
-            
-                <td class="name"><code>events</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">Array.&lt;string></span>
-
-
-            
-            </td>
-
-            
-                <td class="attributes">
-                
-                    &lt;optional><br>
-                
-
-                
-                </td>
-            
-
-            
-
-            <td class="description last">Names of events to compare.
-(default: <code>['close', 'end', 'error']</code>)</td>
-        </tr>
-
-    
-
-        <tr>
-            
-                <td class="name"><code>incremental</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">function</span>
-
-
-            
-            </td>
-
-            
-                <td class="attributes">
-                
-                    &lt;optional><br>
-                
-
-                
-                </td>
-            
-
-            
-
-            <td class="description last">Incremental
-comparison function which will be called periodically with a StreamState
-object for each stream.  This function may modify the StreamState objects to
-remove data not required for later comparisons (e.g. common output) and may
-perform the comparison before the streams have ended (e.g. due to early
-differences).  Any non-null, non-undefined value returned by this function
-will finish the comparison, resolve the returned promise, and be passed to
-the callback as its second argument. A value thrown by this function will
-finish the comparison, reject the promise and be passed to the callback as
-its first argument.  If compare is not specified, this function will also be
-called for the final comparison.</td>
-        </tr>
-
-    
-
-        <tr>
-            
-                <td class="name"><code>objectMode</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">boolean</span>
-
-
-            
-            </td>
-
-            
-                <td class="attributes">
-                
-                    &lt;optional><br>
-                
-
-                
-                </td>
-            
-
-            
-
-            <td class="description last">Collect values read into an Array.  This
-allows comparison of read values without concatenation and comparison of
-non-string/Buffer types.</td>
-        </tr>
-
-    
-
-        <tr>
-            
-                <td class="name"><code>readPolicy</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type"><a href="global.html#ReadPolicy">ReadPolicy</a></span>
-
-
-            
-            </td>
-
-            
-                <td class="attributes">
-                
-                    &lt;optional><br>
-                
-
-                
-                </td>
-            
-
-            
-
-            <td class="description last">Scheduling discipline for reads from th
-streams.  (default: <code>'least'</code>)</td>
-        </tr>
-
-    
-    </tbody>
-</table>
-
-
-
-
-<dl class="details">
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-    <dt class="tag-source">Source:</dt>
-    <dd class="tag-source"><ul class="dummy"><li>
-        <a href="index.js.html">index.js</a>, <a href="index.js.html#line92">line 92</a>
-    </li></ul></dd>
-    
-
-    
-
-    
-
-    
-</dl>
-
-
-
-
-
-
-            
-    
 
     
 </article>
@@ -1107,7 +730,7 @@ streams.  (default: <code>'least'</code>)</td>
 <br class="clear">
 
 <footer>
-    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.5.5</a> on Fri Jun 29 2018 17:41:00 GMT-0600 (MDT)
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 3.6.4</a> on Sat Apr 25 2020 18:56:29 GMT-0600 (Mountain Daylight Time)
 </footer>
 
 <script> prettyPrint(); </script>

@@ -33,7 +33,7 @@
 
 'use strict';
 
-const {EventEmitter} = require('events');
+const { EventEmitter } = require('events');
 const util = require('util');
 
 const debug = util.debuglog('stream-compare');
@@ -48,7 +48,7 @@ const CompareType = {
   /** An incremental comparison. */
   incremental: 'incremental',
   /** A full comparison followed by &lt;code>'end'&lt;/code>. */
-  last: 'last'
+  last: 'last',
 };
 
 /** Defines the available read policies.
@@ -66,7 +66,7 @@ const ReadPolicy = {
    * &lt;code>.read()&lt;/code> the data elsewhere, or call &lt;code>.resume()&lt;/code> on
    * the streams so that the data will be read and &lt;code>'end'&lt;/code> can be
    * reached. */
-  none: 'none'
+  none: 'none',
 };
 
 /** Default option values.
@@ -81,7 +81,7 @@ const DEFAULT_OPTIONS = {
   events: ['close', 'end', 'error'],
   objectMode: false,
   /** @type {!ReadPolicy} */
-  readPolicy: 'least'
+  readPolicy: 'least',
 };
 
 /** Caller-visible stream state for comparison.
@@ -108,6 +108,13 @@ function StreamState() {
   /** Events emitted by the stream.
    * @type !Array.&lt;!{name: string, args: !Array}> */
   this.events = [];
+  /** Are more events expected on this stream?
+   *
+   * Initially true, currently set false once an event in options.endEvents has
+   * been emitted and no additional events have been emitted since the event
+   * queue was last cleared (i.e. after setImmediate).
+   */
+  this.expectEvents = true;
   /** Data returned/emitted by the stream (as an &lt;code>Array&lt;/code> if in
    * &lt;code>objectMode&lt;/code>).
    * @type Array|Buffer|string */
@@ -140,8 +147,8 @@ function StreamState() {
  * value thrown by this function will reject the promise and be passed to the
  * callback as its first argument.  This function is required if incremental is
  * not specified.
- * @property {number=} delay Additional delay (in ms) after streams end before
- * comparing.  (default: &lt;code>0&lt;/code>)
+ * @property {number=} delay Delay (in ms) after both streams have emitted
+ * their last expected event before comparing. (default: &lt;code>0&lt;/code>)
  * @property {Array&lt;string>=} endEvents Names of events which signal the end of
  * a stream.  Final compare is performed once both streams have emitted an end
  * event.  (default: &lt;code>['end', 'error']&lt;/code>)
@@ -191,7 +198,7 @@ function streamCompare(stream1, stream2, optionsOrCompare) {
   let options;
   if (optionsOrCompare) {
     if (typeof optionsOrCompare === 'function') {
-      options = {compare: optionsOrCompare};
+      options = { compare: optionsOrCompare };
     } else if (typeof optionsOrCompare === 'object') {
       options = optionsOrCompare;
     } else {
@@ -199,7 +206,7 @@ function streamCompare(stream1, stream2, optionsOrCompare) {
     }
   }
 
-  options = Object.assign({}, DEFAULT_OPTIONS, options);
+  options = { ...DEFAULT_OPTIONS, ...options };
   if (!options.compare) {
     options.compare = options.incremental;
   }
@@ -245,17 +252,18 @@ function streamCompare(stream1, stream2, optionsOrCompare) {
 
   let reject;
   let resolve;
-  const promise = new Promise(((resolveArg, rejectArg) => {
+  // eslint-disable-next-line promise/param-names
+  const promise = new Promise((resolveArg, rejectArg) => {
     resolve = resolveArg;
     reject = rejectArg;
-  }));
+  });
   const state1 = new StreamState();
   const state2 = new StreamState();
-  let ended = 0;
   let isDone = false;
   const listeners1 = {};
   const listeners2 = {};
-  let postEndImmediate;
+  let lastEventImmediate1;
+  let lastEventImmediate2;
   let postEndTimeout;
 
   /** Gets the name of a stream for logging purposes.
@@ -271,6 +279,8 @@ function streamCompare(stream1, stream2, optionsOrCompare) {
     isDone = true;
 
     debug('Unregistering stream event listeners...');
+
+    /* eslint-disable no-use-before-define */
 
     Object.keys(listeners1).forEach((eventName) => {
       stream1.removeListener(eventName, listeners1[eventName]);
@@ -292,7 +302,10 @@ function streamCompare(stream1, stream2, optionsOrCompare) {
       stream2.removeListener(eventName, endListener2);
     });
 
-    clearImmediate(postEndImmediate);
+    /* eslint-enable no-use-before-define */
+
+    clearImmediate(lastEventImmediate1);
+    clearImmediate(lastEventImmediate2);
     clearTimeout(postEndTimeout);
 
     debug('Comparison finished.');
@@ -360,6 +373,46 @@ function streamCompare(stream1, stream2, optionsOrCompare) {
     doCompare(options.compare, CompareType.last);
   };
 
+  function lastEventListener(stream, state) {
+    debug(`Not expecting more events from ${streamName(stream)}.`);
+
+    state.expectEvents = false;
+
+    if (options.incremental) {
+      if (doCompare(options.incremental, CompareType.incremental)) {
+        return;
+      }
+    }
+
+    if (!state1.expectEvents &amp;&amp; !state2.expectEvents) {
+      const postEventsCompare =
+        () => doCompare(options.compare, CompareType.last);
+      if (options.delay) {
+        debug(`All streams have ended.  Delaying for ${options.delay
+        }ms before final compare.`);
+        postEndTimeout = setTimeout(postEventsCompare, options.delay);
+      } else {
+        postEventsCompare();
+      }
+    }
+  }
+
+  function anyEventListener1() {
+    // If waiting for the last event on this stream, move to end of queue.
+    if (lastEventImmediate1) {
+      clearImmediate(lastEventImmediate1);
+      lastEventImmediate1 = setImmediate(lastEventListener, stream1, state1);
+    }
+  }
+
+  function anyEventListener2() {
+    // If waiting for the last event on this stream, move to end of queue.
+    if (lastEventImmediate2) {
+      clearImmediate(lastEventImmediate2);
+      lastEventImmediate2 = setImmediate(lastEventListener, stream2, state2);
+    }
+  }
+
   // Note:  Add event listeners before endListeners so end/error is recorded
   options.events.forEach((eventName) => {
     if (listeners1[eventName]) {
@@ -374,7 +427,7 @@ function streamCompare(stream1, stream2, optionsOrCompare) {
     function listener(...args) {
       this.events.push({
         name: eventName,
-        args: Array.prototype.slice.call(args)
+        args: Array.prototype.slice.call(args),
       });
 
       if (options.incremental) {
@@ -382,17 +435,21 @@ function streamCompare(stream1, stream2, optionsOrCompare) {
       }
     }
 
-    listeners1[eventName] = function listener1(...args) {
+    function listener1(...args) {
       debug(`'${eventName}' event from stream1.`);
       listener.apply(state1, args);
-    };
-    stream1.on(eventName, listeners1[eventName]);
+      anyEventListener1();
+    }
+    listeners1[eventName] = listener1;
+    stream1.on(eventName, listener1);
 
-    listeners2[eventName] = function listener2(...args) {
+    function listener2(...args) {
       debug(`'${eventName}' event from stream2.`);
       listener.apply(state2, args);
-    };
-    stream2.on(eventName, listeners2[eventName]);
+      anyEventListener2();
+    }
+    listeners2[eventName] = listener2;
+    stream2.on(eventName, listener2);
   });
 
   /** Handles stream end events.
@@ -408,7 +465,6 @@ function streamCompare(stream1, stream2, optionsOrCompare) {
     }
 
     state.ended = true;
-    ended += 1;
 
     debug(`${streamName(this)} has ended.`);
 
@@ -418,26 +474,19 @@ function streamCompare(stream1, stream2, optionsOrCompare) {
       }
     }
 
-    if (ended === 2) {
-      const postEndCompare = function() {
-        doCompare(options.compare, CompareType.last);
-      };
-      if (options.delay) {
-        debug(`All streams have ended.  Delaying for ${options.delay
-        }ms before final compare.`);
-        postEndTimeout = setTimeout(postEndCompare, options.delay);
-      } else {
-        // Let pending I/O and callbacks complete to catch some errant events
-        debug('All streams have ended.  Delaying before final compare.');
-        postEndImmediate = setImmediate(postEndCompare);
-      }
+    if (state === state1) {
+      lastEventImmediate1 = setImmediate(lastEventListener, this, state);
+    } else {
+      lastEventImmediate2 = setImmediate(lastEventListener, this, state);
     }
   }
 
   function endListener1() {
+    anyEventListener1();
     endListener.call(this, state1);
   }
   function endListener2() {
+    anyEventListener2();
     endListener.call(this, state2);
   }
   options.endEvents.forEach((eventName) => {
@@ -493,7 +542,7 @@ function streamCompare(stream1, stream2, optionsOrCompare) {
         // Should append to a Buffer we control and store a slice in .data
         this.data = Buffer.concat(
           [this.data, data],
-          this.data.length + data.length
+          this.data.length + data.length,
         );
       }
       this.totalDataLen += data.length;
@@ -616,7 +665,7 @@ module.exports = streamCompare;
 <br class="clear">
 
 <footer>
-    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.5.5</a> on Fri Jun 29 2018 17:41:00 GMT-0600 (MDT)
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 3.6.4</a> on Sat Apr 25 2020 18:56:29 GMT-0600 (Mountain Daylight Time)
 </footer>
 
 <script> prettyPrint(); </script>

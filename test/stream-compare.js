@@ -535,6 +535,25 @@ describe('streamCompare', () => {
       return promise;
     });
 
+    it('compares events immediately after end by default', () => {
+      function compare(state1, state2) {
+        assert.deepStrictEqual(state1, state2);
+        assert.deepStrictEqual(
+          state1.events[state1.events.length - 1].name,
+          'close',
+        );
+      }
+      const stream1 = new stream.PassThrough();
+      const stream2 = new stream.PassThrough();
+      const promise = streamCompare(stream1, stream2, compare);
+      function emitClose() { this.emit('close'); }
+      stream1.once('end', emitClose);
+      stream2.once('end', emitClose);
+      stream1.end();
+      stream2.end();
+      return promise;
+    });
+
     it('can ignore all events', () => {
       function compare(state1, state2) {
         assert.deepStrictEqual(state1.events, []);

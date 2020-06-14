@@ -10,9 +10,6 @@ const assert = require('assert');
 const stream = require('stream');
 const streamCompare = require('..');
 
-// Many helper functions are defined in the tests in which they are used.
-/* eslint-disable unicorn/consistent-function-scoping */
-
 function assertInstanceOf(obj, ctor) {
   if (!(obj instanceof ctor)) {
     assert.fail(
@@ -1132,7 +1129,7 @@ describe('streamCompare', () => {
           assert.assert.deepStrictEqual(incEvents1, incEvents2);
           // null/undefined means "continue comparing future data"
           return null;
-        } catch (err) {
+        } catch {
           return compareValue;
         }
       }

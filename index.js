@@ -11,6 +11,7 @@ const util = require('util');
 const debug = util.debuglog('stream-compare');
 
 /** Comparison type.
+ *
  * @enum {string}
  * @private
  */
@@ -24,6 +25,7 @@ const CompareType = {
 };
 
 /** Defines the available read policies.
+ *
  * @enum {string}
  */
 const ReadPolicy = {
@@ -42,7 +44,8 @@ const ReadPolicy = {
 };
 
 /** Default option values.
- * @const
+ *
+ * @constant
  * @private
  */
 const DEFAULT_OPTIONS = {
@@ -72,13 +75,15 @@ const DEFAULT_OPTIONS = {
  * non-state information (e.g. the stream itself or the comparison options)
  * and their prototype is never used.</p>
  *
- * @constructor
+ * @class
  */
 function StreamState() {
   /** Has the stream emitted <code>'end'</code> or <code>'error'</code>. */
   this.ended = false;
   /** Events emitted by the stream.
-   * @type !Array.<!{name: string, args: !Array}> */
+   *
+   * @type {!Array.<!{name: string, args: !Array}>}
+   */
   this.events = [];
   /** Are more events expected on this stream?
    *
@@ -89,7 +94,8 @@ function StreamState() {
   this.expectEvents = true;
   /** Data returned/emitted by the stream (as an <code>Array</code> if in
    * <code>objectMode</code>).
-   * @type Array|Buffer|string */
+   *
+   * @type {Array|Buffer|string} */
   this.data = undefined;
   /** Count of total objects read in <code>objectMode</code>, bytes/chars read
    * otherwise. */
@@ -98,7 +104,7 @@ function StreamState() {
 
 /** Options for {@link streamCompare}.
  *
- * @ template CompareResult
+ * @template CompareResult
  * @typedef {{
  *   abortOnError: boolean|undefined,
  *   compare: ((function(!StreamState,!StreamState): CompareResult)|undefined),
@@ -148,22 +154,23 @@ function StreamState() {
 /** Promise returned by {@link streamCompare}.
  *
  * @ template CompareResult
- * @constructor
+ *
+ * @class
  * @name StreamComparePromise
- * @extends Promise<CompareResult>
+ * @augments Promise<CompareResult>
  */
 // var StreamComparePromise;
 
-/** Compares the output of two Readable streams.
+/**
+ * Compares the output of two Readable streams.
  *
- * @ template CompareResult
- * @param {!stream.Readable} stream1 First stream to compare.
- * @param {!stream.Readable} stream2 Second stream to compare.
+ * @template CompareResult
+ * @param {!module:stream.Readable} stream1 First stream to compare.
+ * @param {!module:stream.Readable} stream2 Second stream to compare.
  * @param {!StreamCompareOptions<CompareResult>|
- * function(!StreamState,!StreamState): CompareResult}
- * optionsOrCompare Options, or a comparison function (as described in
- * {@link options.compare}).
- * @return {StreamComparePromise<CompareResult>} A <code>Promise</code> with
+ * function(!StreamState,!StreamState): CompareResult} optionsOrCompare
+ * Options, or a comparison function (as described in {@link options.compare}).
+ * @returns {StreamComparePromise<CompareResult>} A <code>Promise</code> with
  * the comparison result or error.
  */
 function streamCompare(stream1, stream2, optionsOrCompare) {
@@ -239,6 +246,7 @@ function streamCompare(stream1, stream2, optionsOrCompare) {
   let postEndTimeout;
 
   /** Gets the name of a stream for logging purposes.
+   *
    * @private
    */
   function streamName(stream) {
@@ -319,6 +327,7 @@ function streamCompare(stream1, stream2, optionsOrCompare) {
   }
 
   /** Compares the states of the two streams non-incrementally.
+   *
    * @function
    * @name StreamComparePromise#checkpoint
    */
@@ -333,6 +342,7 @@ function streamCompare(stream1, stream2, optionsOrCompare) {
 
   /** Compares the states of the two streams non-incrementally then ends the
    * comparison whether or not compare produced a result or error.
+   *
    * @function
    * @name StreamComparePromise#end
    */
@@ -425,7 +435,8 @@ function streamCompare(stream1, stream2, optionsOrCompare) {
   });
 
   /** Handles stream end events.
-   * @this {!Readable}
+   *
+   * @this !module:stream.Readable
    * @private
    */
   function endListener(state) {
@@ -479,7 +490,7 @@ function streamCompare(stream1, stream2, optionsOrCompare) {
    * our guarantees.  We call it as if it were to convey this behavior and to
    * avoid ESLint no-param-reassign.
    *
-   * @this {!StreamState}
+   * @this !StreamState
    * @param {*} data Data read from the stream for this StreamState.
    * @private
    */
@@ -527,6 +538,7 @@ function streamCompare(stream1, stream2, optionsOrCompare) {
   }
 
   /** Handles data read from the stream for a given state.
+   *
    * @private
    */
   function handleData(state, data) {
@@ -547,6 +559,7 @@ function streamCompare(stream1, stream2, optionsOrCompare) {
   }
 
   /** Reads from the non-ended stream which has the smallest totalDataLen.
+   *
    * @private
    */
   function readNext() {

@@ -102,9 +102,6 @@ function StreamState() {
   this.totalDataLen = 0;
 }
 
-// https://github.com/gajus/eslint-plugin-jsdoc/issues/579
-/* eslint-disable jsdoc/no-undefined-types */
-
 /** Options for {@link streamCompare}.
  *
  * @template CompareResult
@@ -153,8 +150,6 @@ function StreamState() {
  * streams.  (default: <code>'least'</code>)
  */
 // var StreamCompareOptions;
-
-/* eslint-enable jsdoc/no-undefined-types */
 
 /** Promise returned by {@link streamCompare}.
  *

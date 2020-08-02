@@ -27,6 +27,10 @@ function neverCalled(arg) {
   throw err;
 }
 
+// Many tests define helper functions which could be global.
+// More readable to keep them near their point of use.
+/* eslint-disable unicorn/consistent-function-scoping */
+
 describe('streamCompare', () => {
   it('propagates the value returned by compare', () => {
     const compareValue = false;

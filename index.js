@@ -435,7 +435,7 @@ function streamCompare(stream1, stream2, optionsOrCompare) {
 
   /** Handles stream end events.
    *
-   * @this !module:stream.Readable
+   * @this {!module:stream.Readable}
    * @private
    */
   function endListener(state) {
@@ -489,7 +489,7 @@ function streamCompare(stream1, stream2, optionsOrCompare) {
    * our guarantees.  We call it as if it were to convey this behavior and to
    * avoid ESLint no-param-reassign.
    *
-   * @this !StreamState
+   * @this {!StreamState}
    * @param {*} data Data read from the stream for this StreamState.
    * @private
    */

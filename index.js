@@ -6,9 +6,9 @@
 'use strict';
 
 const { EventEmitter } = require('events');
-const util = require('util');
+const { debuglog } = require('util');
 
-const debug = util.debuglog('stream-compare');
+const debug = debuglog('stream-compare');
 
 /** Comparison type.
  *
@@ -261,25 +261,25 @@ function streamCompare(stream1, stream2, optionsOrCompare) {
 
     /* eslint-disable no-use-before-define */
 
-    Object.keys(listeners1).forEach((eventName) => {
+    for (const eventName of Object.keys(listeners1)) {
       stream1.removeListener(eventName, listeners1[eventName]);
-    });
+    }
     stream1.removeListener('readable', readNext);
     stream1.removeListener('error', onStreamError);
     stream1.removeListener('end', readNextOnEnd);
-    options.endEvents.forEach((eventName) => {
+    for (const eventName of options.endEvents) {
       stream1.removeListener(eventName, endListener1);
-    });
+    }
 
-    Object.keys(listeners2).forEach((eventName) => {
+    for (const eventName of Object.keys(listeners2)) {
       stream2.removeListener(eventName, listeners2[eventName]);
-    });
+    }
     stream2.removeListener('readable', readNext);
     stream2.removeListener('error', onStreamError);
     stream2.removeListener('end', readNextOnEnd);
-    options.endEvents.forEach((eventName) => {
+    for (const eventName of options.endEvents) {
       stream2.removeListener(eventName, endListener2);
-    });
+    }
 
     /* eslint-enable no-use-before-define */
 
@@ -359,10 +359,9 @@ function streamCompare(stream1, stream2, optionsOrCompare) {
 
     state.expectEvents = false;
 
-    if (options.incremental) {
-      if (doCompare(options.incremental, CompareType.incremental)) {
-        return;
-      }
+    if (options.incremental
+      && doCompare(options.incremental, CompareType.incremental)) {
+      return;
     }
 
     if (!state1.expectEvents && !state2.expectEvents) {
@@ -395,20 +394,22 @@ function streamCompare(stream1, stream2, optionsOrCompare) {
   }
 
   // Note:  Add event listeners before endListeners so end/error is recorded
-  options.events.forEach((eventName) => {
+  for (const eventName of options.events) {
+    /* eslint-disable no-continue, no-inner-declarations */
+
     if (listeners1[eventName]) {
-      return;
+      continue;
     }
 
     if (options.abortOnError && eventName === 'error') {
       // Error event is always immediately fatal.
-      return;
+      continue;
     }
 
     function listener(...args) {
       this.events.push({
         name: eventName,
-        args: Array.prototype.slice.call(args),
+        args,
       });
 
       if (options.incremental) {
@@ -431,7 +432,9 @@ function streamCompare(stream1, stream2, optionsOrCompare) {
     }
     listeners2[eventName] = listener2;
     stream2.on(eventName, listener2);
-  });
+
+    /* eslint-enable no-continue, no-inner-declarations */
+  }
 
   /** Handles stream end events.
    *
@@ -450,10 +453,9 @@ function streamCompare(stream1, stream2, optionsOrCompare) {
 
     debug(`${streamName(this)} has ended.`);
 
-    if (options.incremental) {
-      if (doCompare(options.incremental, CompareType.incremental)) {
-        return;
-      }
+    if (options.incremental
+      && doCompare(options.incremental, CompareType.incremental)) {
+      return;
     }
 
     if (state === state1) {
@@ -471,12 +473,12 @@ function streamCompare(stream1, stream2, optionsOrCompare) {
     anyEventListener2();
     endListener.call(this, state2);
   }
-  options.endEvents.forEach((eventName) => {
+  for (const eventName of options.endEvents) {
     if (!options.abortOnError || eventName !== 'error') {
       stream1.on(eventName, endListener1);
       stream2.on(eventName, endListener2);
     }
-  });
+  }
 
   if (options.abortOnError) {
     stream1.once('error', onStreamError);
@@ -522,10 +524,10 @@ function streamCompare(stream1, stream2, optionsOrCompare) {
       } else if (data.length > 0) {
         // FIXME:  Potential performance issue if data or this.data are large.
         // Should append to a Buffer we control and store a slice in .data
-        this.data = Buffer.concat(
-          [this.data, data],
-          this.data.length + data.length,
-        );
+        //
+        // https://github.com/sindresorhus/eslint-plugin-unicorn/issues/1068
+        // eslint-disable-next-line unicorn/prefer-spread
+        this.data = Buffer.concat([this.data, data]);
       }
       this.totalDataLen += data.length;
     } else {

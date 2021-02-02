@@ -352,7 +352,7 @@ describe('streamCompare', () => {
     });
 
     const optionNames = ['endEvents', 'events', 'incremental', 'readPolicy'];
-    optionNames.forEach((optionName) => {
+    for (const optionName of optionNames) {
       it(`for invalid options.${optionName}`, () => {
         assert.throws(
           () => {
@@ -369,7 +369,7 @@ describe('streamCompare', () => {
           },
         );
       });
-    });
+    }
   });
 
   describe('abortOnError', () => {
@@ -943,6 +943,8 @@ describe('streamCompare', () => {
         ]);
 
         // Data properly recombined by flowing reads
+        // https://github.com/sindresorhus/eslint-plugin-unicorn/issues/1068
+        // eslint-disable-next-line unicorn/prefer-spread
         assert.deepStrictEqual(state2.data, Buffer.concat(data2));
         // Events record each 'data' event, even empty ones
         assert.deepStrictEqual(state2.events, [

@@ -1,8 +1,7 @@
 stream-compare
 ==============
 
-[![Build Status: Linux](https://img.shields.io/travis/kevinoid/stream-compare/master.svg?style=flat&label=build+on+linux)](https://travis-ci.org/kevinoid/stream-compare)
-[![Build Status: Windows](https://img.shields.io/appveyor/ci/kevinoid/stream-compare/master.svg?style=flat&label=build+on+windows)](https://ci.appveyor.com/project/kevinoid/stream-compare)
+[![Build Status](https://img.shields.io/github/workflow/status/kevinoid/stream-compare/Node.js%20CI/master.svg?style=flat&label=build)](https://github.com/kevinoid/stream-compare/actions?query=branch%3Amaster)
 [![Coverage](https://img.shields.io/codecov/c/github/kevinoid/stream-compare.svg?style=flat)](https://codecov.io/github/kevinoid/stream-compare?branch=master)
 [![Dependency Status](https://img.shields.io/david/kevinoid/stream-compare.svg?style=flat)](https://david-dm.org/kevinoid/stream-compare)
 [![Supported Node Version](https://img.shields.io/node/v/stream-compare.svg?style=flat)](https://www.npmjs.com/package/stream-compare)

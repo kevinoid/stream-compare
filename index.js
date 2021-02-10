@@ -395,7 +395,7 @@ function streamCompare(stream1, stream2, optionsOrCompare) {
 
   // Note:  Add event listeners before endListeners so end/error is recorded
   for (const eventName of options.events) {
-    /* eslint-disable no-continue, no-inner-declarations */
+    /* eslint-disable no-continue */
 
     if (listeners1[eventName]) {
       continue;
@@ -524,9 +524,6 @@ function streamCompare(stream1, stream2, optionsOrCompare) {
       } else if (data.length > 0) {
         // FIXME:  Potential performance issue if data or this.data are large.
         // Should append to a Buffer we control and store a slice in .data
-        //
-        // https://github.com/sindresorhus/eslint-plugin-unicorn/issues/1068
-        // eslint-disable-next-line unicorn/prefer-spread
         this.data = Buffer.concat([this.data, data]);
       }
       this.totalDataLen += data.length;

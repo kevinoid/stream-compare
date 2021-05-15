@@ -630,6 +630,6 @@ function streamCompare(stream1, stream2, optionsOrCompare) {
   return promise;
 }
 
-streamCompare.makeIncremental = require('./lib/make-incremental');
+streamCompare.makeIncremental = require('./lib/make-incremental.js');
 
 module.exports = streamCompare;

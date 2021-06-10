@@ -96,7 +96,7 @@ function StreamState() {
   /** Data returned/emitted by the stream (as an <code>Array</code> if in
    * <code>objectMode</code>).
    *
-   * @type {Array|Buffer|string} */
+    @type {Array|Buffer|string} */
   this.data = undefined;
   /** Count of total objects read in <code>objectMode</code>, bytes/chars read
    * otherwise. */

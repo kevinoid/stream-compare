@@ -136,13 +136,13 @@ comparison.then(
 );
 stream1.write('Hello');
 stream2.write('Hello');
-process.nextTick(function() {
+setImmediate(function() {
   comparison.checkpoint();
 
   stream1.write(' world!');
   stream2.write(' world!');
 
-  process.nextTick(function() {
+  setImmediate(function() {
     comparison.end();
   });
 });

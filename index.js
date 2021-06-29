@@ -619,7 +619,7 @@ function streamCompare(stream1, stream2, optionsOrCompare) {
       debug('Will read from stream with least output.');
       stream1.once('end', readNextOnEnd);
       stream2.once('end', readNextOnEnd);
-      process.nextTick(readNext);
+      queueMicrotask(readNext);
       break;
 
     default:

@@ -230,7 +230,7 @@ describe('streamCompare', () => {
     stream2.end('world');
 
     return new Promise((resolve, reject) => {
-      process.nextTick(resolve);
+      setImmediate(resolve);
     }).then(() => streamCompare(stream1, stream2, compare)).then((result) => {
       assert.strictEqual(result, compareVal);
     });
@@ -402,12 +402,12 @@ describe('streamCompare', () => {
 
     it('doesn\'t call incremental or compare on abort', () => {
       function compare(state1, state2) {
-        process.nextTick(() => {
+        queueMicrotask(() => {
           throw new Error('compare shouldn\'t be called');
         });
       }
       function incremental(state1, state2) {
-        process.nextTick(() => {
+        queueMicrotask(() => {
           throw new Error('incremental shouldn\'t be called');
         });
       }
@@ -498,7 +498,7 @@ describe('streamCompare', () => {
 
     it('abortOnError takes precedence for \'error\' event', () => {
       function compare(state1, state2) {
-        process.nextTick(() => {
+        queueMicrotask(() => {
           throw new Error('compare shouldn\'t be called');
         });
       }
@@ -671,7 +671,7 @@ describe('streamCompare', () => {
       // does not fire until read() is called after EOF, so we emit directly
       // for first stream.  Then streamCompare must read from the second.
       stream1.emit('end');
-      process.nextTick(() => {
+      setImmediate(() => {
         stream1.emit('end');
         stream2.end();
       });
@@ -689,7 +689,7 @@ describe('streamCompare', () => {
       stream1.end();
       stream2.end();
       stream2.once('end', () => {
-        process.nextTick(() => {
+        queueMicrotask(() => {
           stream1.emit('end');
         });
       });
@@ -1309,7 +1309,7 @@ describe('streamCompare', () => {
       stream1.end('hello');
       stream2.end('world');
       return new Promise((resolve, reject) => {
-        process.nextTick(resolve);
+        setImmediate(resolve);
       }).then(() => {
         const options = {
           compare: function compare(state1, state2) {
@@ -1334,7 +1334,7 @@ describe('Promise', () => {
       const compareValue = false;
       function compare(state1, state2) {
         if (compareCalled) {
-          process.nextTick(() => {
+          queueMicrotask(() => {
             throw new Error('compare called multiple times');
           });
         }
@@ -1457,7 +1457,7 @@ describe('Promise', () => {
       const compareValue = false;
       function compare(state1, state2) {
         if (ended) {
-          process.nextTick(() => {
+          queueMicrotask(() => {
             throw new Error('compare called after end');
           });
         }

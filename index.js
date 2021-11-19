@@ -396,8 +396,6 @@ function streamCompare(stream1, stream2, optionsOrCompare) {
 
   // Note:  Add event listeners before endListeners so end/error is recorded
   for (const eventName of options.events) {
-    /* eslint-disable no-continue */
-
     if (listeners1[eventName]) {
       continue;
     }

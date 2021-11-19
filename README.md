@@ -13,13 +13,13 @@ comparison/assertion function.
 ## Introductory Example
 
 ```js
-var assert = require('assert');
-var fs = require('fs');
-var streamCompare = require('stream-compare');
+const assert = require('assert');
+const fs = require('fs');
+const streamCompare = require('stream-compare');
 
-var stream1 = fs.createReadStream(file);
-var stream2 = fs.createReadStream(file);
-streamCompare(stream1, stream2, assert.deepStrictEqual).catch(function(err) {
+const stream1 = fs.createReadStream(file);
+const stream2 = fs.createReadStream(file);
+streamCompare(stream1, stream2, assert.deepStrictEqual).catch((err) => {
   console.log(err); // AssertionError if streams differ
 });
 ```
@@ -71,13 +71,13 @@ function `makeIncremental` creates such a function from a data comparison
 function and/or an events comparison function:
 
 ```js
-var options = {
+const options = {
   incremental: streamCompare.makeIncremental(
     assert.deepStrictEqual,     // Compares data
-    assert.deepStrictEqual      // Compares events
-  )
+    assert.deepStrictEqual,     // Compares events
+  ),
 };
-streamCompare(stream1, stream2, options).catch(function(err) {
+streamCompare(stream1, stream2, options).catch((err) => {
   console.log(err); // AssertionError if stream data values differ
 });
 ```
@@ -89,11 +89,11 @@ Sometimes it may be desirable to compare the values returned by `.read()` or
 done by setting `objectMode: true` (even if the values aren't `Object`s):
 
 ```js
-var options = {
+const options = {
   compare: assert.deepStrictEqual,
-  objectMode: true
+  objectMode: true,
 };
-streamCompare(stream1, stream2, options).catch(function(err) {
+streamCompare(stream1, stream2, options).catch((err) => {
   console.log(err); // AssertionError if stream data values differ
 });
 ```
@@ -106,12 +106,12 @@ In order to compare the ordering of `'data'` events with other events, add
 matching events in the `events` property of the state object.
 
 ```js
-var options = {
+const options = {
   compare: assert.deepStrictEqual,
   events: ['close', 'data', 'end', 'error'],
-  readPolicy: 'none'
+  readPolicy: 'none',
 };
-streamCompare(stream1, stream2, options).catch(function(err) {
+streamCompare(stream1, stream2, options).catch((err) => {
   console.log(err); // AssertionError if stream events (including 'data') differ
 });
 ```
@@ -125,26 +125,24 @@ both streams end using `.end()`.  The full details are available in the [API
 Documentation](https://kevinoid.github.io/stream-compare/api/StreamComparePromise.html).
 
 ```js
-var PassThrough = require('stream').PassThrough;
+const { PassThrough } = require('stream');
 
-var stream1 = new PassThrough();
-var stream2 = new PassThrough();
-var comparison = streamCompare(stream1, stream2, assert.deepStrictEqual);
+const stream1 = new PassThrough();
+const stream2 = new PassThrough();
+const comparison = streamCompare(stream1, stream2, assert.deepStrictEqual);
 comparison.then(
-  function() { console.log('streams are equal'); },
-  function(err) { console.log('streams differ: ' + err); }
+  () => console.log('streams are equal'),
+  (err) => console.log(`streams differ: ${err}`),
 );
 stream1.write('Hello');
 stream2.write('Hello');
-setImmediate(function() {
+setImmediate(() => {
   comparison.checkpoint();
 
   stream1.write(' world!');
   stream2.write(' world!');
 
-  setImmediate(function() {
-    comparison.end();
-  });
+  setImmediate(() => comparison.end());
 });
 ```
 

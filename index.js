@@ -6,8 +6,8 @@
 
 'use strict';
 
-const { EventEmitter } = require('events');
-const { debuglog } = require('util');
+const { EventEmitter } = require('node:events');
+const { debuglog } = require('node:util');
 
 const debug = debuglog('stream-compare');
 

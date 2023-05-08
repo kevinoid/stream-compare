@@ -5,9 +5,9 @@
 
 'use strict';
 
-const { EventEmitter } = require('events');
-const assert = require('assert');
-const stream = require('stream');
+const { EventEmitter } = require('node:events');
+const assert = require('node:assert');
+const stream = require('node:stream');
 const streamCompare = require('..');
 
 function assertInstanceOf(obj, ctor) {

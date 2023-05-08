@@ -186,9 +186,7 @@ function streamCompare(stream1, stream2, optionsOrCompare) {
   }
 
   options = { ...DEFAULT_OPTIONS, ...options };
-  if (!options.compare) {
-    options.compare = options.incremental;
-  }
+  options.compare ||= options.incremental;
 
   // Can change this to duck typing if there are non-EventEmitter streams
   if (!(stream1 instanceof EventEmitter)) {

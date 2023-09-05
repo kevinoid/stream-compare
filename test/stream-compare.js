@@ -8,6 +8,9 @@
 const { EventEmitter } = require('node:events');
 const assert = require('node:assert');
 const stream = require('node:stream');
+
+// https://github.com/import-js/eslint-plugin-import/issues/2844
+// eslint-disable-next-line import/extensions
 const streamCompare = require('..');
 
 function assertInstanceOf(obj, ctor) {

@@ -65,7 +65,7 @@ const DEFAULT_OPTIONS = {
  * Guarantees/Invariants:
  *
  * <ul>
- * <li>Equivalent states are {@link assert.deepStrictEqual}.</li>
+ * <li>Equivalent states are {@link module:assert.deepStrictEqual}.</li>
  * <li>States can be round-tripped to JSON at any point.</li>
  * <li>States are owned by the caller, so any additional properties (which are
  *   permitted to violate the above guarantees) are preserved and the same
@@ -103,7 +103,7 @@ function StreamState() {
   this.totalDataLen = 0;
 }
 
-/** Options for {@link streamCompare}.
+/** Options for {@link module:stream-compare}.
  *
  * @template CompareResult
  * @typedef {{
@@ -169,7 +169,8 @@ function StreamState() {
  * @param {!module:stream.Readable} stream2 Second stream to compare.
  * @param {!StreamCompareOptions<CompareResult>|
  * function(!StreamState,!StreamState): CompareResult} optionsOrCompare
- * Options, or a comparison function (as described in {@link options.compare}).
+ * Options, or a comparison function (as described in
+ * {@link StreamCompareOptions#compare}).
  * @returns {StreamComparePromise<CompareResult>} A <code>Promise</code> with
  * the comparison result or error.
  */

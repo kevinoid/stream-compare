@@ -543,7 +543,7 @@ describe('streamCompare', () => {
       function compare(state1, state2) {
         assert.deepStrictEqual(state1, state2);
         assert.deepStrictEqual(
-          state1.events[state1.events.length - 1].name,
+          state1.events.at(-1).name,
           'close',
         );
       }

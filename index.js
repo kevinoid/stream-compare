@@ -430,8 +430,6 @@ function streamCompare(stream1, stream2, optionsOrCompare) {
     }
     listeners2[eventName] = listener2;
     stream2.on(eventName, listener2);
-
-    /* eslint-enable no-continue, no-inner-declarations */
   }
 
   /** Handles stream end events.

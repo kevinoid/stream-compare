@@ -223,7 +223,7 @@ function streamCompare(stream1, stream2, optionsOrCompare) {
   if (typeof options.readPolicy !== 'string') {
     throw new TypeError('options.readPolicy must be a string');
   }
-  if (!hasOwnProperty.call(ReadPolicy, options.readPolicy)) {
+  if (!Object.hasOwn(ReadPolicy, options.readPolicy)) {
     throw new RangeError(`Invalid options.readPolicy '${
       options.readPolicy}'`);
   }

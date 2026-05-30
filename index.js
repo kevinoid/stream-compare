@@ -254,7 +254,7 @@ function streamCompare(stream1, stream2, optionsOrCompare) {
         : 'unknown stream';
   }
 
-  function done(err, result) {
+  function done() {
     isDone = true;
 
     debug('Unregistering stream event listeners...');

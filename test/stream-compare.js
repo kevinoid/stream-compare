@@ -1369,10 +1369,7 @@ describe('Promise', () => {
     });
 
     it('does not resolve for compare non-result', () => {
-      let compareValue;
-      function compare(state1, state2) {
-        return compareValue;
-      }
+      function compare(state1, state2) {}
 
       const stream1 = new stream.PassThrough();
       const stream2 = new stream.PassThrough();
@@ -1499,10 +1496,7 @@ describe('Promise', () => {
   // Note:  Testing is lighter since most code paths shared with #checkpoint()
   describe('#end()', () => {
     it('does a non-incremental compare and ends on non-result', () => {
-      let compareValue;
-      function compare(state1, state2) {
-        return compareValue;
-      }
+      function compare(state1, state2) {}
 
       const stream1 = new stream.PassThrough();
       const stream2 = new stream.PassThrough();

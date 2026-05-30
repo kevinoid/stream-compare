@@ -198,22 +198,22 @@ function streamCompare(stream1, stream2, optionsOrCompare) {
     throw new TypeError('stream2 must be an EventEmitter');
   }
   if (options.readPolicy === 'least'
-      && (typeof stream1.read !== 'function'
-       || typeof stream2.read !== 'function')) {
+    && (typeof stream1.read !== 'function'
+      || typeof stream2.read !== 'function')) {
     throw new TypeError('streams must have .read() for readPolicy \'least\'');
   }
   if (typeof options.compare !== 'function') {
     throw new TypeError('options.compare must be a function');
   }
   if (!options.endEvents
-      || typeof options.endEvents !== 'object'
-      || options.endEvents.length !== Math.floor(options.endEvents.length)) {
+    || typeof options.endEvents !== 'object'
+    || options.endEvents.length !== Math.floor(options.endEvents.length)) {
     throw new TypeError('options.endEvents must be Array-like');
   }
   options.endEvents = Array.prototype.slice.call(options.endEvents);
   if (!options.events
-      || typeof options.events !== 'object'
-      || options.events.length !== Math.floor(options.events.length)) {
+    || typeof options.events !== 'object'
+    || options.events.length !== Math.floor(options.events.length)) {
     throw new TypeError('options.events must be Array-like');
   }
   options.events = Array.prototype.slice.call(options.events);
@@ -561,7 +561,7 @@ function streamCompare(stream1, stream2, optionsOrCompare) {
 
     while (!isDone) {
       if (!state1.ended
-          && (state2.ended || state1.totalDataLen <= state2.totalDataLen)) {
+        && (state2.ended || state1.totalDataLen <= state2.totalDataLen)) {
         stream = stream1;
         state = state1;
       } else if (!state2.ended) {

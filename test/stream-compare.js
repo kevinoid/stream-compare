@@ -299,7 +299,7 @@ describe('streamCompare', () => {
           streamCompare(true, stream2, assert.deepStrictEqual);
         },
         (err) => err instanceof TypeError
-            && /\bstream1\b/.test(err.message),
+          && /\bstream1\b/.test(err.message),
       );
     });
 
@@ -309,7 +309,7 @@ describe('streamCompare', () => {
           streamCompare(stream1, true, assert.deepStrictEqual);
         },
         (err) => err instanceof TypeError
-            && /\bstream2\b/.test(err.message),
+          && /\bstream2\b/.test(err.message),
       );
     });
 
@@ -319,8 +319,8 @@ describe('streamCompare', () => {
           streamCompare(stream1, new EventEmitter(), assert.deepStrictEqual);
         },
         (err) => err instanceof TypeError
-            && /\bread\b/.test(err.message)
-            && /\bleast\b/.test(err.message),
+          && /\bread\b/.test(err.message)
+          && /\bleast\b/.test(err.message),
       );
     });
 
@@ -328,7 +328,7 @@ describe('streamCompare', () => {
       assert.throws(
         () => { streamCompare(stream1, stream2, null); },
         (err) => err instanceof TypeError
-            && /\boptions\.compare\b/.test(err.message),
+          && /\boptions\.compare\b/.test(err.message),
       );
     });
 
@@ -336,7 +336,7 @@ describe('streamCompare', () => {
       assert.throws(
         () => { streamCompare(stream1, stream2, true); },
         (err) => err instanceof TypeError
-            && /\boptions\.compare\b|\boptionsOrCompare\b/.test(err.message),
+          && /\boptions\.compare\b|\boptionsOrCompare\b/.test(err.message),
       );
     });
 
@@ -350,7 +350,7 @@ describe('streamCompare', () => {
           streamCompare(stream1, stream2, options);
         },
         (err) => err instanceof RangeError
-            && /\boptions\.readPolicy\b/.test(err.message),
+          && /\boptions\.readPolicy\b/.test(err.message),
       );
     });
 
@@ -361,8 +361,8 @@ describe('streamCompare', () => {
           () => {
             const options = {
               compare: assert.deepStrictEqual,
+              [optionName]: true, // None accepts true as valid
             };
-            options[optionName] = true; // None accepts true as valid
             streamCompare(stream1, stream2, options);
           },
           (err) => {

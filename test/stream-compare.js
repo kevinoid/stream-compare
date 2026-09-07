@@ -11,7 +11,7 @@ const stream = require('node:stream');
 const { setImmediate: setImmediateP } = require('node:timers/promises');
 
 // https://github.com/import-js/eslint-plugin-import/issues/2844
-// eslint-disable-next-line import/extensions
+// eslint-disable-next-line import-x/extensions
 const streamCompare = require('..');
 
 function assertInstanceOf(obj, ctor) {

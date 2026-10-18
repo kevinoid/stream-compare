@@ -75,32 +75,34 @@ const DEFAULT_OPTIONS = {
  * <p>As a result, objects of this class have no methods and do not contain any
  * non-state information (e.g. the stream itself or the comparison options)
  * and their prototype is never used.</p>
- *
- * @class
  */
-function StreamState() {
+class StreamState {
   /** Has the stream emitted <code>'end'</code> or <code>'error'</code>. */
-  this.ended = false;
+  ended = false;
+
   /** Events emitted by the stream.
    *
    * @type {!Array.<!{name: string, args: !Array}>}
    */
-  this.events = [];
+  events = [];
+
   /** Are more events expected on this stream?
    *
    * Initially true, currently set false once an event in options.endEvents has
    * been emitted and no additional events have been emitted since the event
    * queue was last cleared (i.e. after setImmediate).
    */
-  this.expectEvents = true;
+  expectEvents = true;
+
   /** Data returned/emitted by the stream (as an <code>Array</code> if in
    * <code>objectMode</code>).
    *
     @type {Array|Buffer|string} */
-  this.data = undefined;
+  data = undefined;
+
   /** Count of total objects read in <code>objectMode</code>, bytes/chars read
    * otherwise. */
-  this.totalDataLen = 0;
+  totalDataLen = 0;
 }
 
 /** Options for {@link module:stream-compare}.

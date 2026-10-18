@@ -8,6 +8,7 @@
 const assert = require('node:assert');
 const { EventEmitter } = require('node:events');
 const stream = require('node:stream');
+const { setImmediate: setImmediateP } = require('node:timers/promises');
 
 // https://github.com/import-js/eslint-plugin-import/issues/2844
 // eslint-disable-next-line import/extensions
@@ -24,18 +25,12 @@ function assertInstanceOf(obj, ctor) {
   }
 }
 
-function neverCalled(arg) {
-  const err = new Error('Should not be called');
-  err.actual = arg;
-  throw err;
-}
-
 // Many tests define helper functions which could be global.
 // More readable to keep them near their point of use.
 /* eslint-disable unicorn/consistent-function-scoping */
 
 describe('streamCompare', () => {
-  it('propagates the value returned by compare', () => {
+  it('propagates the value returned by compare', async () => {
     const compareValue = false;
     function compare(state1, state2) {
       return compareValue;
@@ -43,17 +38,14 @@ describe('streamCompare', () => {
 
     const stream1 = new stream.PassThrough();
     const stream2 = new stream.PassThrough();
-    const promise = streamCompare(stream1, stream2, compare)
-      .then((value) => {
-        assert.strictEqual(value, compareValue);
-      });
+    const promise = streamCompare(stream1, stream2, compare);
     stream1.end();
     stream2.end();
-
-    return promise;
+    const value = await promise;
+    assert.strictEqual(value, compareValue);
   });
 
-  it('propagates the value thrown by compare', () => {
+  it('propagates the value thrown by compare', async () => {
     const compareErr = new Error('compare error');
     function compare(state1, state2) {
       throw compareErr;
@@ -61,17 +53,19 @@ describe('streamCompare', () => {
 
     const stream1 = new stream.PassThrough();
     const stream2 = new stream.PassThrough();
-    const promise = streamCompare(stream1, stream2, compare).then(
-      neverCalled,
-      (err) => { assert.strictEqual(err, compareErr); },
-    );
+    const promise = streamCompare(stream1, stream2, compare);
     stream1.end();
     stream2.end();
-
-    return promise;
+    await assert.rejects(
+      promise,
+      (err) => {
+        assert.strictEqual(err, compareErr);
+        return true;
+      },
+    );
   });
 
-  it('propagates falsey value thrown by compare', () => {
+  it('propagates falsey value thrown by compare', async () => {
     const compareErr = false;
     function compare(state1, state2) {
       throw compareErr;
@@ -79,14 +73,16 @@ describe('streamCompare', () => {
 
     const stream1 = new stream.PassThrough();
     const stream2 = new stream.PassThrough();
-    const promise = streamCompare(stream1, stream2, compare).then(
-      neverCalled,
-      (err) => { assert.strictEqual(err, compareErr); },
-    );
+    const promise = streamCompare(stream1, stream2, compare);
     stream1.end();
     stream2.end();
-
-    return promise;
+    await assert.rejects(
+      promise,
+      (err) => {
+        assert.strictEqual(err, compareErr);
+        return true;
+      },
+    );
   });
 
   it('passes stream state information to compare', () => {
@@ -173,31 +169,34 @@ describe('streamCompare', () => {
     return promise;
   });
 
-  it('compares empty and non-empty streams as not equal', () => {
+  it('compares empty and non-empty streams as not equal', async () => {
     const stream1 = new stream.PassThrough();
     const stream2 = new stream.PassThrough();
-    const promise = streamCompare(stream1, stream2, assert.deepStrictEqual)
-      .then(
-        neverCalled,
-        (err) => { assertInstanceOf(err, assert.AssertionError); },
-      );
+    const promise = streamCompare(stream1, stream2, assert.deepStrictEqual);
     stream1.end();
     stream2.end('hello');
-
-    return promise;
+    await assert.rejects(
+      promise,
+      (err) => {
+        assertInstanceOf(err, assert.AssertionError);
+        return true;
+      },
+    );
   });
 
-  it('compares non-empty and empty streams as not equal', () => {
+  it('compares non-empty and empty streams as not equal', async () => {
     const stream1 = new stream.PassThrough();
     const stream2 = new stream.PassThrough();
-    const promise = streamCompare(stream1, stream2, assert.deepStrictEqual)
-      .then(
-        neverCalled,
-        (err) => { assertInstanceOf(err, assert.AssertionError); },
-      );
+    const promise = streamCompare(stream1, stream2, assert.deepStrictEqual);
     stream1.end('hello');
     stream2.end();
-    return promise;
+    await assert.rejects(
+      promise,
+      (err) => {
+        assertInstanceOf(err, assert.AssertionError);
+        return true;
+      },
+    );
   });
 
   it('compares same-data streams as equal', () => {
@@ -209,20 +208,22 @@ describe('streamCompare', () => {
     return promise;
   });
 
-  it('compares different-data streams as not equal', () => {
+  it('compares different-data streams as not equal', async () => {
     const stream1 = new stream.PassThrough();
     const stream2 = new stream.PassThrough();
-    const promise = streamCompare(stream1, stream2, assert.deepStrictEqual)
-      .then(
-        neverCalled,
-        (err) => { assertInstanceOf(err, assert.AssertionError); },
-      );
+    const promise = streamCompare(stream1, stream2, assert.deepStrictEqual);
     stream1.end('hello');
     stream2.end('world');
-    return promise;
+    await assert.rejects(
+      promise,
+      (err) => {
+        assertInstanceOf(err, assert.AssertionError);
+        return true;
+      },
+    );
   });
 
-  it('compares buffered different-data streams as not equal', () => {
+  it('compares buffered different-data streams as not equal', async () => {
     const compareVal = false;
     function compare(state1, state2) {
       return compareVal;
@@ -232,11 +233,9 @@ describe('streamCompare', () => {
     stream1.end('hello');
     stream2.end('world');
 
-    return new Promise((resolve, reject) => {
-      setImmediate(resolve);
-    }).then(() => streamCompare(stream1, stream2, compare)).then((result) => {
-      assert.strictEqual(result, compareVal);
-    });
+    await setImmediateP();
+    const result = await streamCompare(stream1, stream2, compare);
+    assert.strictEqual(result, compareVal);
   });
 
   it('compares same-data same-writes as equal', () => {
@@ -271,21 +270,24 @@ describe('streamCompare', () => {
     return promise;
   });
 
-  it('compares different-writes as non-equal in objectMode', () => {
+  it('compares different-writes as non-equal in objectMode', async () => {
     const stream1 = new stream.PassThrough({ objectMode: true });
     const stream2 = new stream.PassThrough({ objectMode: true });
     const options = {
       compare: assert.deepStrictEqual,
       objectMode: true,
     };
-    const promise = streamCompare(stream1, stream2, options).then(
-      neverCalled,
-      (err) => { assertInstanceOf(err, assert.AssertionError); },
-    );
+    const promise = streamCompare(stream1, stream2, options);
     stream1.end('hello world');
     stream2.write('hello');
     stream2.end(' world');
-    return promise;
+    await assert.rejects(
+      promise,
+      (err) => {
+        assertInstanceOf(err, assert.AssertionError);
+        return true;
+      },
+    );
   });
 
   describe('argument checking', () => {
@@ -385,7 +387,7 @@ describe('streamCompare', () => {
       return promise;
     });
 
-    it('can abort on error events', () => {
+    it('can abort on error events', async () => {
       const stream1 = new stream.PassThrough();
       const stream2 = new stream.PassThrough();
       const options = {
@@ -393,17 +395,18 @@ describe('streamCompare', () => {
         compare: assert.deepStrictEqual,
       };
       const errTest = new Error('Test');
-      const promise = streamCompare(stream1, stream2, options).then(
-        neverCalled,
+      const promise = streamCompare(stream1, stream2, options);
+      stream1.emit('error', errTest);
+      await assert.rejects(
+        promise,
         (err) => {
           assert.strictEqual(err, errTest);
+          return true;
         },
       );
-      stream1.emit('error', errTest);
-      return promise;
     });
 
-    it('doesn\'t call incremental or compare on abort', () => {
+    it('doesn\'t call incremental or compare on abort', async () => {
       function compare(state1, state2) {
         queueMicrotask(() => {
           throw new Error('compare shouldn\'t be called');
@@ -423,19 +426,20 @@ describe('streamCompare', () => {
         incremental,
       };
       const errTest = new Error('Test');
-      const promise = streamCompare(stream1, stream2, options).then(
-        neverCalled,
+      const promise = streamCompare(stream1, stream2, options);
+      stream1.emit('error', errTest);
+      await assert.rejects(
+        promise,
         (err) => {
           assert.strictEqual(err, errTest);
+          return true;
         },
       );
-      stream1.emit('error', errTest);
-      return promise;
     });
   });
 
   describe('delay', () => {
-    it('compares delayed end events if delayed more', () => {
+    it('compares delayed end events if delayed more', async () => {
       const stream1 = new stream.PassThrough();
       const stream2 = new stream.PassThrough();
       // Since 0 is treated as 1, min is 1
@@ -444,21 +448,24 @@ describe('streamCompare', () => {
         compare: assert.deepStrictEqual,
         delay: eventDelay + 1,
       };
-      const promise = streamCompare(stream1, stream2, options).then(
-        neverCalled,
-        (err) => { assertInstanceOf(err, assert.AssertionError); },
-      );
+      const promise = streamCompare(stream1, stream2, options);
       stream1.end();
       stream2.end();
       setTimeout(() => {
         stream1.emit('end');
       }, eventDelay);
-      return promise;
+      await assert.rejects(
+        promise,
+        (err) => {
+          assertInstanceOf(err, assert.AssertionError);
+          return true;
+        },
+      );
     });
   });
 
   describe('endEvents', () => {
-    it('can end on custom event', () => {
+    it('can end on custom event', async () => {
       const stream1 = new stream.PassThrough();
       const stream2 = new stream.PassThrough();
       const options = {
@@ -471,16 +478,14 @@ describe('streamCompare', () => {
 
       stream1.emit('test');
 
-      return new Promise((resolve, reject) => {
-        setImmediate(() => {
-          assert.strictEqual(hasEnded, false);
-          stream2.emit('test');
-          resolve(promise);
-        });
-      });
+      await setImmediateP();
+      assert.strictEqual(hasEnded, false);
+      stream2.emit('test');
+
+      await promise;
     });
 
-    it('can avoid ending on stream \'end\'', () => {
+    it('can avoid ending on stream \'end\'', async () => {
       const stream1 = new stream.PassThrough();
       const stream2 = new stream.PassThrough();
       let hasEnded = false;
@@ -490,16 +495,13 @@ describe('streamCompare', () => {
       stream1.end();
       stream2.end();
 
-      return new Promise((resolve, reject) => {
-        setImmediate(() => {
-          assert.strictEqual(hasEnded, false);
+      await setImmediateP();
+      assert.strictEqual(hasEnded, false);
 
-          resolve(promise);
-        });
-      });
+      await promise;
     });
 
-    it('abortOnError takes precedence for \'error\' event', () => {
+    it('abortOnError takes precedence for \'error\' event', async () => {
       function compare(state1, state2) {
         queueMicrotask(() => {
           throw new Error('compare shouldn\'t be called');
@@ -514,16 +516,17 @@ describe('streamCompare', () => {
         endEvents: ['end', 'error'],
       };
       const errTest = new Error('Test');
-      const promise = streamCompare(stream1, stream2, options).then(
-        neverCalled,
-        (err) => {
-          assert.strictEqual(err, errTest);
-        },
-      );
+      const promise = streamCompare(stream1, stream2, options);
       // Note:  .emit() rather than .end() to avoid delay
       stream1.emit('end');
       stream2.emit('error', errTest);
-      return promise;
+      await assert.rejects(
+        promise,
+        (err) => {
+          assert.strictEqual(err, errTest);
+          return true;
+        },
+      );
     });
   });
 
@@ -631,45 +634,45 @@ describe('streamCompare', () => {
       return promise;
     });
 
-    it('compares different Readable events as different', () => {
+    it('compares different Readable events as different', async () => {
       const stream1 = new stream.PassThrough();
       const stream2 = new stream.PassThrough();
-      const promise = streamCompare(stream1, stream2, assert.deepStrictEqual)
-        .then(
-          neverCalled,
-          (err) => { assertInstanceOf(err, assert.AssertionError); },
-        );
+      const promise = streamCompare(stream1, stream2, assert.deepStrictEqual);
       stream1.emit('close');
       stream1.end();
       stream2.end();
-      return promise;
+      await assert.rejects(
+        promise,
+        (err) => {
+          assertInstanceOf(err, assert.AssertionError);
+          return true;
+        },
+      );
     });
 
-    it('compares different event counts as different', () => {
+    it('compares different event counts as different', async () => {
       const stream1 = new stream.PassThrough();
       const stream2 = new stream.PassThrough();
-      const promise = streamCompare(stream1, stream2, assert.deepStrictEqual)
-        .then(
-          neverCalled,
-          (err) => { assertInstanceOf(err, assert.AssertionError); },
-        );
+      const promise = streamCompare(stream1, stream2, assert.deepStrictEqual);
       stream1.emit('close');
       stream1.emit('close');
       stream1.end();
       stream2.emit('close');
       stream2.end();
-      return promise;
+      await assert.rejects(
+        promise,
+        (err) => {
+          assertInstanceOf(err, assert.AssertionError);
+          return true;
+        },
+      );
     });
 
     // If the end events overlap the function returns early
-    it('compares multiple non-overlapping end events', () => {
+    it('compares multiple non-overlapping end events', async () => {
       const stream1 = new stream.PassThrough();
       const stream2 = new stream.PassThrough();
-      const promise = streamCompare(stream1, stream2, assert.deepStrictEqual)
-        .then(
-          neverCalled,
-          (err) => { assertInstanceOf(err, assert.AssertionError); },
-        );
+      const promise = streamCompare(stream1, stream2, assert.deepStrictEqual);
       // streamCompare may read from either stream first and the 'end' event
       // does not fire until read() is called after EOF, so we emit directly
       // for first stream.  Then streamCompare must read from the second.
@@ -678,17 +681,19 @@ describe('streamCompare', () => {
         stream1.emit('end');
         stream2.end();
       });
-      return promise;
+      await assert.rejects(
+        promise,
+        (err) => {
+          assertInstanceOf(err, assert.AssertionError);
+          return true;
+        },
+      );
     });
 
-    it('compares immediate overlapping end events', () => {
+    it('compares immediate overlapping end events', async () => {
       const stream1 = new stream.PassThrough();
       const stream2 = new stream.PassThrough();
-      const promise = streamCompare(stream1, stream2, assert.deepStrictEqual)
-        .then(
-          neverCalled,
-          (err) => { assertInstanceOf(err, assert.AssertionError); },
-        );
+      const promise = streamCompare(stream1, stream2, assert.deepStrictEqual);
       stream1.end();
       stream2.end();
       stream2.once('end', () => {
@@ -696,12 +701,18 @@ describe('streamCompare', () => {
           stream1.emit('end');
         });
       });
-      return promise;
+      await assert.rejects(
+        promise,
+        (err) => {
+          assertInstanceOf(err, assert.AssertionError);
+          return true;
+        },
+      );
     });
   });
 
   describe('incremental', () => {
-    it('has no effect if null is returned', () => {
+    it('has no effect if null is returned', async () => {
       function incremental(state1, state2) {
         return null;
       }
@@ -712,16 +723,19 @@ describe('streamCompare', () => {
         compare: assert.deepStrictEqual,
         incremental,
       };
-      const promise = streamCompare(stream1, stream2, options).then(
-        neverCalled,
-        (err) => { assertInstanceOf(err, assert.AssertionError); },
-      );
+      const promise = streamCompare(stream1, stream2, options);
       stream1.end('hello');
       stream2.end('world');
-      return promise;
+      await assert.rejects(
+        promise,
+        (err) => {
+          assertInstanceOf(err, assert.AssertionError);
+          return true;
+        },
+      );
     });
 
-    it('avoids compare if a non-null value is returned', () => {
+    it('avoids compare if a non-null value is returned', async () => {
       const incrementalValue = false;
       function compare(state1, state2) {
         throw new Error('compare shouldn\'t be called');
@@ -736,16 +750,15 @@ describe('streamCompare', () => {
         compare,
         incremental,
       };
-      const promise = streamCompare(stream1, stream2, options)
-        .then((value) => {
-          assert.strictEqual(value, incrementalValue);
-        });
+      const promise = streamCompare(stream1, stream2, options);
       stream1.end('hello');
       stream2.end('hello');
-      return promise;
+
+      const value = await promise;
+      assert.strictEqual(value, incrementalValue);
     });
 
-    it('avoids compare if a value is thrown', () => {
+    it('avoids compare if a value is thrown', async () => {
       const incrementalErr = new Error('incremental error');
       function compare(state1, state2) {
         throw new Error('compare shouldn\'t be called');
@@ -760,16 +773,19 @@ describe('streamCompare', () => {
         compare,
         incremental,
       };
-      const promise = streamCompare(stream1, stream2, options).then(
-        neverCalled,
-        (err) => { assert.strictEqual(err, incrementalErr); },
-      );
+      const promise = streamCompare(stream1, stream2, options);
       stream1.end('hello');
       stream2.end('hello');
-      return promise;
+      await assert.rejects(
+        promise,
+        (err) => {
+          assert.strictEqual(err, incrementalErr);
+          return true;
+        },
+      );
     });
 
-    it('causes early return if a value is thrown', () => {
+    it('causes early return if a value is thrown', async () => {
       const incrementalErr = new Error('incremental error');
       function compare(state1, state2) {
         throw new Error('compare shouldn\'t be called');
@@ -784,17 +800,20 @@ describe('streamCompare', () => {
         compare,
         incremental,
       };
-      const promise = streamCompare(stream1, stream2, options).then(
-        neverCalled,
-        (err) => { assert.strictEqual(err, incrementalErr); },
-      );
+      const promise = streamCompare(stream1, stream2, options);
       stream1.end('hello');
       // stream2 writes more than stream1 but does not end.
       stream2.write('hello2');
-      return promise;
+      await assert.rejects(
+        promise,
+        (err) => {
+          assert.strictEqual(err, incrementalErr);
+          return true;
+        },
+      );
     });
 
-    it('is used in place of compare, if not specified', () => {
+    it('is used in place of compare, if not specified', async () => {
       const incrementalValue = false;
       function incremental(state1, state2) {
         return state1.ended && state2.ended ? incrementalValue : null;
@@ -805,17 +824,15 @@ describe('streamCompare', () => {
       const options = {
         incremental,
       };
-      const promise = streamCompare(stream1, stream2, options)
-        .then((value) => {
-          assert.strictEqual(value, incrementalValue);
-        });
+      const promise = streamCompare(stream1, stream2, options);
       stream1.end('hello');
       stream2.end('world');
-      return promise;
+      const value = await promise;
+      assert.strictEqual(value, incrementalValue);
     });
 
     // This is a subtle implementation detail that we need to be careful about
-    it('calls done once when conclusive on end', () => {
+    it('calls done once when conclusive on end', async () => {
       function compare(state1, state2) {
         throw new Error('compare shouldn\'t be called');
       }
@@ -830,44 +847,46 @@ describe('streamCompare', () => {
         compare,
         incremental,
       };
-      const promise = streamCompare(stream1, stream2, options)
-        .then((value) => {
-          assert.strictEqual(value, incrementalValue);
-        });
+      const promise = streamCompare(stream1, stream2, options);
       stream1.end();
       stream2.end();
-      return promise;
+      const value = await promise;
+      assert.strictEqual(value, incrementalValue);
     });
   });
 
   describe('objectMode', () => {
-    it('errors on differing-type reads not in objectMode', () => {
+    it('errors on differing-type reads not in objectMode', async () => {
       // Streams are in objectMode, streamCompare is not
       const stream1 = new stream.PassThrough({ objectMode: true });
       const stream2 = new stream.PassThrough({ objectMode: true });
-      const promise = streamCompare(stream1, stream2, assert.deepStrictEqual)
-        .then(
-          neverCalled,
-          (err) => { assertInstanceOf(err, TypeError); },
-        );
+      const promise = streamCompare(stream1, stream2, assert.deepStrictEqual);
       stream1.write('hello');
       stream1.end(Buffer.from(' world'));
       stream2.end();
-      return promise;
+      await assert.rejects(
+        promise,
+        (err) => {
+          assertInstanceOf(err, TypeError);
+          return true;
+        },
+      );
     });
 
-    it('errors on object reads not in objectMode', () => {
+    it('errors on object reads not in objectMode', async () => {
       // Streams are in objectMode, streamCompare is not
       const stream1 = new stream.PassThrough({ objectMode: true });
       const stream2 = new stream.PassThrough({ objectMode: true });
-      const promise = streamCompare(stream1, stream2, assert.deepStrictEqual)
-        .then(
-          neverCalled,
-          (err) => { assertInstanceOf(err, TypeError); },
-        );
+      const promise = streamCompare(stream1, stream2, assert.deepStrictEqual);
       stream1.end({ test: true });
       stream2.end();
-      return promise;
+      await assert.rejects(
+        promise,
+        (err) => {
+          assertInstanceOf(err, TypeError);
+          return true;
+        },
+      );
     });
 
     it('supports object reads in objectMode', () => {
@@ -885,7 +904,7 @@ describe('streamCompare', () => {
   });
 
   describe('readPolicy', () => {
-    it('doesn\'t call read() when \'flowing\'', () => {
+    it('doesn\'t call read() when \'flowing\'', async () => {
       let isDone = false;
       let isPaused = true;
 
@@ -900,25 +919,24 @@ describe('streamCompare', () => {
         readPolicy: 'flowing',
         incremental,
       };
-      const promise = streamCompare(stream1, stream1, options).then(() => {
-        isDone = true;
-      });
+      const promise = streamCompare(stream1, stream1, options)
+        .then(() => { isDone = true; });
       stream1.pause();
       stream1.write('hello');
       stream2.pause();
       stream2.write('hello');
 
       // Delay to ensure we don't read/finish
-      setImmediate(() => {
-        assert.strictEqual(isDone, false);
-        isPaused = false;
-        stream1.resume();
-        stream2.resume();
-        stream1.end();
-        stream2.end();
-      });
+      await setImmediateP();
 
-      return promise;
+      assert.strictEqual(isDone, false);
+      isPaused = false;
+      stream1.resume();
+      stream2.resume();
+      stream1.end();
+      stream2.end();
+
+      await promise;
     });
 
     it('compares the same stream as equal when \'flowing\'', () => {
@@ -1087,7 +1105,7 @@ describe('streamCompare', () => {
   });
 
   describe('.makeIncremental()', () => {
-    it('makes incremental from a Buffer comparison function', () => {
+    it('makes incremental from a Buffer comparison function', async () => {
       const data1 = [Buffer.from('hello'), Buffer.from('world')];
       const data2 = [Buffer.from('hello'), Buffer.from('there')];
       // Use of compareCount in this way is illustrative, but over-specified.
@@ -1113,20 +1131,18 @@ describe('streamCompare', () => {
         compare,
         incremental: streamCompare.makeIncremental(compareData),
       };
-      const promise = streamCompare(stream1, stream2, options)
-        .then((value) => {
-          assert.strictEqual(value, compareValue);
-        });
+      const promise = streamCompare(stream1, stream2, options);
 
       stream1.write(data1[0]);
       stream2.write(data2[0]);
       stream1.end(data1[1]);
       stream2.end(data2[1]);
 
-      return promise;
+      const value = await promise;
+      assert.strictEqual(value, compareValue);
     });
 
-    it('makes incremental from an event comparison function', () => {
+    it('makes incremental from an event comparison function', async () => {
       const compareValue = false;
       function compareEvents(incEvents1, incEvents2) {
         assertInstanceOf(incEvents1, Array);
@@ -1150,16 +1166,14 @@ describe('streamCompare', () => {
         compare,
         incremental: streamCompare.makeIncremental(null, compareEvents),
       };
-      const promise = streamCompare(stream1, stream2, options)
-        .then((value) => {
-          assert.strictEqual(value, compareValue);
-        });
+      const promise = streamCompare(stream1, stream2, options);
 
       stream1.emit('close');
       stream1.end();
       stream2.end();
 
-      return promise;
+      const value = await promise;
+      assert.strictEqual(value, compareValue);
     });
 
     it('removes inconclusive data before compare', () => {
@@ -1232,7 +1246,7 @@ describe('streamCompare', () => {
       return promise;
     });
 
-    it('doesn\'t return early due to incompleteness', () => {
+    it('doesn\'t return early due to incompleteness', async () => {
       // Note:  objectMode to prevent write-combining
       const stream1 = new stream.PassThrough({ objectMode: true });
       const stream2 = new stream.PassThrough({ objectMode: true });
@@ -1248,91 +1262,97 @@ describe('streamCompare', () => {
       stream1.end('llo');
       stream2.write('l');
 
-      setImmediate(() => {
-        assert.strictEqual(isDone, false);
-        stream2.end('o');
-      });
+      await setImmediateP();
+      assert.strictEqual(isDone, false);
+      stream2.end('o');
 
-      return promise;
+      await promise;
     });
 
-    it('returns early if streams differ before ending', () => {
+    it('returns early if streams differ before ending', async () => {
       const stream1 = new stream.PassThrough();
       const stream2 = new stream.PassThrough();
       const options = {
         incremental: streamCompare.makeIncremental(assert.deepStrictEqual),
       };
-      const promise = streamCompare(stream1, stream2, options).then(
-        neverCalled,
-        (err) => { assertInstanceOf(err, assert.AssertionError); },
-      );
+      const promise = streamCompare(stream1, stream2, options);
       stream1.write('hello');
       stream2.write('hella');
-      return promise;
+      await assert.rejects(
+        promise,
+        (err) => {
+          assertInstanceOf(err, assert.AssertionError);
+          return true;
+        },
+      );
     });
 
-    it('returns early if stream ends early', () => {
+    it('returns early if stream ends early', async () => {
       const stream1 = new stream.PassThrough();
       const stream2 = new stream.PassThrough();
       const options = {
         incremental: streamCompare.makeIncremental(assert.deepStrictEqual),
       };
-      const promise = streamCompare(stream1, stream2, options).then(
-        neverCalled,
-        (err) => { assertInstanceOf(err, assert.AssertionError); },
-      );
+      const promise = streamCompare(stream1, stream2, options);
       // stream1 writes more data than stream2 but doesn't end
       stream1.write('hello');
       stream2.end('hell');
-      return promise;
+      await assert.rejects(
+        promise,
+        (err) => {
+          assertInstanceOf(err, assert.AssertionError);
+          return true;
+        },
+      );
     });
 
-    it('returns early if stream ends empty', () => {
+    it('returns early if stream ends empty', async () => {
       const stream1 = new stream.PassThrough();
       const stream2 = new stream.PassThrough();
       const options = {
         incremental: streamCompare.makeIncremental(assert.deepStrictEqual),
       };
-      const promise = streamCompare(stream1, stream2, options).then(
-        neverCalled,
-        (err) => { assertInstanceOf(err, assert.AssertionError); },
-      );
+      const promise = streamCompare(stream1, stream2, options);
       // stream1 writes more data than stream2 but doesn't end
       stream1.write('hello');
       stream2.end();
-      return promise;
+      await assert.rejects(
+        promise,
+        (err) => {
+          assertInstanceOf(err, assert.AssertionError);
+          return true;
+        },
+      );
     });
 
     // Note:  Avoids throwing from compare since 'error' gets thrown and caught
     // outside of the constructor.
-    it('compares buffered different-data streams as not equal', () => {
+    it('compares buffered different-data streams as not equal', async () => {
       const incrementalVal = false;
       const stream1 = new stream.PassThrough();
       const stream2 = new stream.PassThrough();
       stream1.end('hello');
       stream2.end('world');
-      return new Promise((resolve, reject) => {
-        setImmediate(resolve);
-      }).then(() => {
-        const options = {
-          compare: function compare(state1, state2) {
-            throw new Error('compare shouldn\'t be called');
-          },
-          incremental: function incremental(state1, state2) {
-            return incrementalVal;
-          },
-        };
-        return streamCompare(stream1, stream2, options);
-      }).then((result) => {
-        assert.strictEqual(result, incrementalVal);
-      });
+
+      await setImmediateP();
+
+      const options = {
+        compare: function compare(state1, state2) {
+          throw new Error('compare shouldn\'t be called');
+        },
+        incremental: function incremental(state1, state2) {
+          return incrementalVal;
+        },
+      };
+      const result = await streamCompare(stream1, stream2, options);
+      assert.strictEqual(result, incrementalVal);
     });
   });
 });
 
 describe('Promise', () => {
   describe('#checkpoint()', () => {
-    it('does a non-incremental comparison and resolves on result', () => {
+    it('does a non-incremental comparison and resolves on result', async () => {
       let wasCompareCalled = false;
       const compareValue = false;
       function compare(state1, state2) {
@@ -1355,20 +1375,17 @@ describe('Promise', () => {
         assert.strictEqual(wasCompareCalled, true);
       });
 
-      return promise.then((value) => {
-        assert.strictEqual(value, compareValue);
+      const value = await promise;
+      assert.strictEqual(value, compareValue);
 
-        stream1.end();
-        stream2.end();
+      stream1.end();
+      stream2.end();
 
-        // Delay to ensure compare is not called
-        return new Promise((resolve, reject) => {
-          setImmediate(resolve);
-        });
-      });
+      // Delay to ensure compare is not called
+      await setImmediateP();
     });
 
-    it('does not resolve for compare non-result', () => {
+    it('does not resolve for compare non-result', async () => {
       function compare(state1, state2) {}
 
       const stream1 = new stream.PassThrough();
@@ -1376,28 +1393,22 @@ describe('Promise', () => {
       const promise = streamCompare(stream1, stream2, compare);
 
       let hasEnded = false;
-      const promise2 = promise.then(() => {
-        hasEnded = true;
-      });
+      const promise2 = promise.then(() => { hasEnded = true; });
 
-      return new Promise((resolve, reject) => {
-        setImmediate(() => {
-          assert.strictEqual(hasEnded, false);
-          promise.checkpoint();
+      await setImmediateP();
+      assert.strictEqual(hasEnded, false);
+      promise.checkpoint();
 
-          setImmediate(() => {
-            assert.strictEqual(hasEnded, false);
+      await setImmediateP();
+      assert.strictEqual(hasEnded, false);
 
-            stream1.end();
-            stream2.end();
+      stream1.end();
+      stream2.end();
 
-            resolve(promise2);
-          });
-        });
-      });
+      await promise2;
     });
 
-    it('can compare before reading', () => {
+    it('can compare before reading', async () => {
       let compareCount = 0;
       const compareValue = false;
       function compare(state1, state2) {
@@ -1417,23 +1428,17 @@ describe('Promise', () => {
       stream1.write(testData);
       stream2.write(testData);
 
-      return promise.then((value) => {
-        assert.strictEqual(value, compareValue);
+      const value = await promise;
+      assert.strictEqual(value, compareValue);
 
-        return new Promise((resolve, reject) => {
-          setImmediate(() => {
-            assert.strictEqual(compareCount, 1);
+      await setImmediateP();
+      assert.strictEqual(compareCount, 1);
 
-            assert.deepStrictEqual(stream1.read(), testData);
-            assert.deepStrictEqual(stream2.read(), testData);
-
-            resolve();
-          });
-        });
-      });
+      assert.deepStrictEqual(stream1.read(), testData);
+      assert.deepStrictEqual(stream2.read(), testData);
     });
 
-    it('does not compare after resolving', () => {
+    it('does not compare after resolving', async () => {
       let hasEnded = false;
       function compare(state1, state2) {
         assert.strictEqual(hasEnded, false);
@@ -1446,13 +1451,12 @@ describe('Promise', () => {
       stream1.end();
       stream2.end();
 
-      return promise.then((value) => {
-        hasEnded = true;
-        promise.checkpoint();
-      });
+      await promise;
+      hasEnded = true;
+      promise.checkpoint();
     });
 
-    it('can take the place of the final compare', () => {
+    it('can take the place of the final compare', async () => {
       let hasEnded = false;
       const compareValue = false;
       function compare(state1, state2) {
@@ -1481,15 +1485,12 @@ describe('Promise', () => {
       stream1.end();
       stream2.end();
 
-      return promise.then((value) => {
-        assert.strictEqual(value, compareValue);
-        hasEnded = true;
+      const value = await promise;
+      assert.strictEqual(value, compareValue);
+      hasEnded = true;
 
-        // Delay to ensure compare is not called
-        return new Promise((resolve, reject) => {
-          setImmediate(resolve);
-        });
-      });
+      // Delay to ensure compare is not called
+      await setImmediateP();
     });
   });
 
@@ -1505,7 +1506,7 @@ describe('Promise', () => {
       return promise;
     });
 
-    it('does not compare after resolving', () => {
+    it('does not compare after resolving', async () => {
       let hasEnded = false;
       function compare(state1, state2) {
         assert.strictEqual(hasEnded, false);
@@ -1518,10 +1519,9 @@ describe('Promise', () => {
       stream1.end();
       stream2.end();
 
-      return promise.then((value) => {
-        hasEnded = true;
-        promise.end();
-      });
+      await promise;
+      hasEnded = true;
+      promise.end();
     });
   });
 });

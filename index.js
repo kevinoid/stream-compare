@@ -230,9 +230,14 @@ function streamCompare(stream1, stream2, optionsOrCompare) {
       options.readPolicy}'`);
   }
 
+  // this is used frequently in listener functions
+  /* eslint-disable unicorn/no-this-outside-of-class */
+
   let reject;
   let resolve;
-  // eslint-disable-next-line promise/param-names
+  // TODO[engine:node@>=22.11]: Use Promise.withResolvers
+  // eslint-disable-next-line @stylistic/max-len
+  // eslint-disable-next-line promise/param-names,unicorn/prefer-promise-with-resolvers
   const promise = new Promise((resolveArg, rejectArg) => {
     resolve = resolveArg;
     reject = rejectArg;

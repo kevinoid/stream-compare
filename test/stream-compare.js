@@ -32,6 +32,7 @@ function assertInstanceOf(obj, ctor) {
 describe('streamCompare', () => {
   it('propagates the value returned by compare', async () => {
     const compareValue = false;
+    // eslint-disable-next-line unicorn/consistent-boolean-name
     function compare(state1, state2) {
       return compareValue;
     }
@@ -66,6 +67,7 @@ describe('streamCompare', () => {
   });
 
   it('propagates falsey value thrown by compare', async () => {
+    // eslint-disable-next-line unicorn/consistent-boolean-name
     const compareErr = false;
     function compare(state1, state2) {
       throw compareErr;
@@ -224,7 +226,9 @@ describe('streamCompare', () => {
   });
 
   it('compares buffered different-data streams as not equal', async () => {
+    // eslint-disable-next-line unicorn/consistent-boolean-name
     const compareVal = false;
+    // eslint-disable-next-line unicorn/consistent-boolean-name
     function compare(state1, state2) {
       return compareVal;
     }
@@ -474,6 +478,7 @@ describe('streamCompare', () => {
       };
       let hasEnded = false;
       const promise = streamCompare(stream1, stream2, options)
+        // eslint-disable-next-line unicorn/prefer-await
         .then(() => { hasEnded = true; });
 
       stream1.emit('test');
@@ -490,6 +495,7 @@ describe('streamCompare', () => {
       const stream2 = new stream.PassThrough();
       let hasEnded = false;
       const promise = streamCompare(stream1, stream2, assert.deepStrictEqual)
+        // eslint-disable-next-line unicorn/prefer-await
         .then(() => { hasEnded = true; });
 
       stream1.end();
@@ -740,6 +746,7 @@ describe('streamCompare', () => {
       function compare(state1, state2) {
         throw new Error('compare shouldn\'t be called');
       }
+      // eslint-disable-next-line unicorn/consistent-boolean-name
       function incremental(state1, state2) {
         return incrementalValue;
       }
@@ -920,6 +927,7 @@ describe('streamCompare', () => {
         incremental,
       };
       const promise = streamCompare(stream1, stream1, options)
+        // eslint-disable-next-line unicorn/prefer-await
         .then(() => { isDone = true; });
       stream1.pause();
       stream1.write('hello');
@@ -1254,9 +1262,9 @@ describe('streamCompare', () => {
         incremental: streamCompare.makeIncremental(assert.deepStrictEqual),
       };
       let isDone = false;
-      const promise = streamCompare(stream1, stream2, options).then(() => {
-        isDone = true;
-      });
+      const promise = streamCompare(stream1, stream2, options)
+        // eslint-disable-next-line unicorn/prefer-await
+        .then(() => { isDone = true; });
       stream1.write('he');
       stream2.write('hel');
       stream1.end('llo');
@@ -1328,6 +1336,7 @@ describe('streamCompare', () => {
     // Note:  Avoids throwing from compare since 'error' gets thrown and caught
     // outside of the constructor.
     it('compares buffered different-data streams as not equal', async () => {
+      // eslint-disable-next-line unicorn/consistent-boolean-name
       const incrementalVal = false;
       const stream1 = new stream.PassThrough();
       const stream2 = new stream.PassThrough();
@@ -1340,6 +1349,7 @@ describe('streamCompare', () => {
         compare: function compare(state1, state2) {
           throw new Error('compare shouldn\'t be called');
         },
+        // eslint-disable-next-line unicorn/consistent-boolean-name
         incremental: function incremental(state1, state2) {
           return incrementalVal;
         },
@@ -1393,6 +1403,7 @@ describe('Promise', () => {
       const promise = streamCompare(stream1, stream2, compare);
 
       let hasEnded = false;
+      // eslint-disable-next-line unicorn/prefer-await
       const promise2 = promise.then(() => { hasEnded = true; });
 
       await setImmediateP();

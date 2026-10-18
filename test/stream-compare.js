@@ -465,15 +465,15 @@ describe('streamCompare', () => {
         compare: assert.deepStrictEqual,
         endEvents: ['test'],
       };
-      let ended = false;
+      let hasEnded = false;
       const promise = streamCompare(stream1, stream2, options)
-        .then(() => { ended = true; });
+        .then(() => { hasEnded = true; });
 
       stream1.emit('test');
 
       return new Promise((resolve, reject) => {
         setImmediate(() => {
-          assert.strictEqual(ended, false);
+          assert.strictEqual(hasEnded, false);
           stream2.emit('test');
           resolve(promise);
         });
@@ -483,16 +483,16 @@ describe('streamCompare', () => {
     it('can avoid ending on stream \'end\'', () => {
       const stream1 = new stream.PassThrough();
       const stream2 = new stream.PassThrough();
-      let ended = false;
+      let hasEnded = false;
       const promise = streamCompare(stream1, stream2, assert.deepStrictEqual)
-        .then(() => { ended = true; });
+        .then(() => { hasEnded = true; });
 
       stream1.end();
       stream2.end();
 
       return new Promise((resolve, reject) => {
         setImmediate(() => {
-          assert.strictEqual(ended, false);
+          assert.strictEqual(hasEnded, false);
 
           resolve(promise);
         });
@@ -1333,15 +1333,15 @@ describe('streamCompare', () => {
 describe('Promise', () => {
   describe('#checkpoint()', () => {
     it('does a non-incremental comparison and resolves on result', () => {
-      let compareCalled = false;
+      let wasCompareCalled = false;
       const compareValue = false;
       function compare(state1, state2) {
-        if (compareCalled) {
+        if (wasCompareCalled) {
           queueMicrotask(() => {
             throw new Error('compare called multiple times');
           });
         }
-        compareCalled = true;
+        wasCompareCalled = true;
         return compareValue;
       }
 
@@ -1350,9 +1350,9 @@ describe('Promise', () => {
       const promise = streamCompare(stream1, stream2, compare);
 
       setImmediate(() => {
-        assert.strictEqual(compareCalled, false);
+        assert.strictEqual(wasCompareCalled, false);
         promise.checkpoint();
-        assert.strictEqual(compareCalled, true);
+        assert.strictEqual(wasCompareCalled, true);
       });
 
       return promise.then((value) => {
@@ -1375,18 +1375,18 @@ describe('Promise', () => {
       const stream2 = new stream.PassThrough();
       const promise = streamCompare(stream1, stream2, compare);
 
-      let ended = false;
+      let hasEnded = false;
       const promise2 = promise.then(() => {
-        ended = true;
+        hasEnded = true;
       });
 
       return new Promise((resolve, reject) => {
         setImmediate(() => {
-          assert.strictEqual(ended, false);
+          assert.strictEqual(hasEnded, false);
           promise.checkpoint();
 
           setImmediate(() => {
-            assert.strictEqual(ended, false);
+            assert.strictEqual(hasEnded, false);
 
             stream1.end();
             stream2.end();
@@ -1434,9 +1434,9 @@ describe('Promise', () => {
     });
 
     it('does not compare after resolving', () => {
-      let ended = false;
+      let hasEnded = false;
       function compare(state1, state2) {
-        assert.strictEqual(ended, false);
+        assert.strictEqual(hasEnded, false);
       }
 
       const stream1 = new stream.PassThrough();
@@ -1447,16 +1447,16 @@ describe('Promise', () => {
       stream2.end();
 
       return promise.then((value) => {
-        ended = true;
+        hasEnded = true;
         promise.checkpoint();
       });
     });
 
     it('can take the place of the final compare', () => {
-      let ended = false;
+      let hasEnded = false;
       const compareValue = false;
       function compare(state1, state2) {
-        if (ended) {
+        if (hasEnded) {
           queueMicrotask(() => {
             throw new Error('compare called after end');
           });
@@ -1483,7 +1483,7 @@ describe('Promise', () => {
 
       return promise.then((value) => {
         assert.strictEqual(value, compareValue);
-        ended = true;
+        hasEnded = true;
 
         // Delay to ensure compare is not called
         return new Promise((resolve, reject) => {
@@ -1506,9 +1506,9 @@ describe('Promise', () => {
     });
 
     it('does not compare after resolving', () => {
-      let ended = false;
+      let hasEnded = false;
       function compare(state1, state2) {
-        assert.strictEqual(ended, false);
+        assert.strictEqual(hasEnded, false);
       }
 
       const stream1 = new stream.PassThrough();
@@ -1519,7 +1519,7 @@ describe('Promise', () => {
       stream2.end();
 
       return promise.then((value) => {
-        ended = true;
+        hasEnded = true;
         promise.end();
       });
     });

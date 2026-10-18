@@ -261,8 +261,8 @@ function streamCompare(stream1, stream2, optionsOrCompare) {
 
     /* eslint-disable no-use-before-define */
 
-    for (const eventName of Object.keys(listeners1)) {
-      stream1.removeListener(eventName, listeners1[eventName]);
+    for (const [eventName, listener] of Object.entries(listeners1)) {
+      stream1.removeListener(eventName, listener);
     }
     stream1.removeListener('readable', readNext);
     stream1.removeListener('error', onStreamError);
@@ -271,8 +271,8 @@ function streamCompare(stream1, stream2, optionsOrCompare) {
       stream1.removeListener(eventName, endListener1);
     }
 
-    for (const eventName of Object.keys(listeners2)) {
-      stream2.removeListener(eventName, listeners2[eventName]);
+    for (const [eventName, listener] of Object.entries(listeners2)) {
+      stream2.removeListener(eventName, listener);
     }
     stream2.removeListener('readable', readNext);
     stream2.removeListener('error', onStreamError);

@@ -397,7 +397,7 @@ function streamCompare(stream1, stream2, optionsOrCompare) {
 
   // Note:  Add event listeners before endListeners so end/error is recorded
   for (const eventName of options.events) {
-    if (listeners1[eventName]) {
+    if (Object.hasOwn(listeners1, eventName)) {
       continue;
     }
 

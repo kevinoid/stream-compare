@@ -401,7 +401,7 @@ function streamCompare(stream1, stream2, optionsOrCompare) {
       continue;
     }
 
-    if (options.abortOnError && eventName === 'error') {
+    if (eventName === 'error' && options.abortOnError) {
       // Error event is always immediately fatal.
       continue;
     }
@@ -443,7 +443,7 @@ function streamCompare(stream1, stream2, optionsOrCompare) {
     // Note:  If incremental is conclusive for 'end' event, this will be called
     // with isDone === true, since removeListener doesn't affect listeners for
     // an event which is already in-progress.
-    if (state.ended || isDone) {
+    if (isDone || state.ended) {
       return;
     }
 
@@ -472,7 +472,7 @@ function streamCompare(stream1, stream2, optionsOrCompare) {
     endListener.call(this, state2);
   }
   for (const eventName of options.endEvents) {
-    if (!options.abortOnError || eventName !== 'error') {
+    if (eventName !== 'error' || !options.abortOnError) {
       stream1.on(eventName, endListener1);
       stream2.on(eventName, endListener2);
     }
@@ -507,7 +507,7 @@ function streamCompare(stream1, stream2, optionsOrCompare) {
     } else if (this.data === null || this.data === undefined) {
       this.data = data;
       this.totalDataLen += data.length;
-    } else if (typeof this.data === 'string' && typeof data === 'string') {
+    } else if (typeof data === 'string' && typeof this.data === 'string') {
       // perf:  Avoid unnecessary string concatenation
       if (this.data.length === 0) {
         this.data = data;
